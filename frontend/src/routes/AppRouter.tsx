@@ -20,12 +20,16 @@ import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OrdersPage } from "../pages/OrdersPage";
+import { OperationsInvoicesPage } from "../pages/OperationsInvoicesPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { PricingPage } from "../pages/PricingPage";
 import { ProductDetailPage } from "../pages/ProductDetailPage";
 import { ProductsPage } from "../pages/ProductsPage";
 import { ProfilePage } from "../pages/ProfilePage";
+import { QuotationsPage } from "../pages/QuotationsPage";
+import { ReportsPage } from "../pages/ReportsPage";
 import { SchedulePage } from "../pages/SchedulePage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { SignupPage } from "../pages/SignupPage";
 import { WishlistPage } from "../pages/WishlistPage";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -51,45 +55,16 @@ export function AppRouter() {
           <Route element={<OperationsLayout />}>
             <Route element={<DashboardPage />} path={ROUTES.dashboard} />
             <Route element={<OrdersPage />} path={ROUTES.orders} />
+            <Route element={<QuotationsPage />} path={ROUTES.quotations} />
             <Route
-              element={
-                <PlaceholderPage
-                  description="Quotation management placeholder for the operations workspace."
-                  title="Quotations"
-                />
-              }
-              path={ROUTES.quotations}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Invoice review and payment tracking placeholder."
-                  title="Invoices"
-                />
-              }
+              element={<OperationsInvoicesPage />}
               path={ROUTES.operationsInvoices}
             />
             <Route element={<ProductsPage />} path={ROUTES.products} />
             <Route element={<PricingPage />} path={ROUTES.pricing} />
             <Route element={<SchedulePage />} path={ROUTES.schedule} />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Operational reports placeholder."
-                  title="Reports"
-                />
-              }
-              path={ROUTES.reports}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Workspace configuration placeholder."
-                  title="Settings"
-                />
-              }
-              path={ROUTES.settings}
-            />
+            <Route element={<ReportsPage />} path={ROUTES.reports} />
+            <Route element={<SettingsPage />} path={ROUTES.settings} />
           </Route>
         </Route>
 
