@@ -11,6 +11,7 @@ import { ROUTES } from "../constants/routes";
 import { AuthLayout } from "../layouts/AuthLayout";
 import { CustomerPortalLayout } from "../layouts/CustomerPortalLayout";
 import { OperationsLayout } from "../layouts/OperationsLayout";
+import { AccountLayout } from "../layouts/AccountLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const CatalogPage = lazy(() =>
@@ -114,6 +115,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 );
+const CustomerSettingsPage = lazy(() =>
+  import("../pages/CustomerSettingsPage").then((module) => ({
+    default: module.CustomerSettingsPage,
+  })),
+);
 const SignupPage = lazy(() =>
   import("../pages/SignupPage").then((module) => ({
     default: module.SignupPage,
@@ -176,15 +182,19 @@ export function AppRouter() {
                 path={ROUTES.checkoutSuccess}
               />
               <Route
-                element={<CustomerOrdersPage />}
-                path={ROUTES.customerOrders}
-              />
-              <Route
                 element={<CustomerInvoicesPage />}
                 path={ROUTES.customerInvoices}
               />
               <Route element={<WishlistPage />} path={ROUTES.wishlist} />
-              <Route element={<ProfilePage />} path={ROUTES.profile} />
+              
+              <Route element={<AccountLayout />}>
+                <Route
+                  element={<CustomerOrdersPage />}
+                  path={ROUTES.customerOrders}
+                />
+                <Route element={<ProfilePage />} path={ROUTES.profile} />
+                <Route element={<CustomerSettingsPage />} path={ROUTES.customerSettings} />
+              </Route>
             </Route>
           </Route>
 

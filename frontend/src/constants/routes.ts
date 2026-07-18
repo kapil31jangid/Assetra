@@ -22,6 +22,7 @@ export const ROUTES = {
   customerInvoices: "/portal/invoices",
   wishlist: "/portal/wishlist",
   profile: "/portal/profile",
+  customerSettings: "/portal/settings",
   notFound: "*",
 } as const;
 
