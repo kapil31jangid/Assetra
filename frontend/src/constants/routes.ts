@@ -13,6 +13,7 @@ export const ROUTES = {
   reports: "/operations/reports",
   settings: "/operations/settings",
   catalog: "/portal/catalog",
+  productDetail: "/portal/catalog/:productId",
   cart: "/portal/cart",
   checkout: "/portal/checkout",
   customerOrders: "/portal/orders",

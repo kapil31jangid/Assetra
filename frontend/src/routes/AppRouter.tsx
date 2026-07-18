@@ -16,6 +16,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { ProductDetailPage } from "../pages/ProductDetailPage";
 import { SignupPage } from "../pages/SignupPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -113,6 +114,7 @@ export function AppRouter() {
         >
           <Route element={<CustomerPortalLayout />}>
             <Route element={<CatalogPage />} path={ROUTES.catalog} />
+            <Route element={<ProductDetailPage />} path={ROUTES.productDetail} />
             <Route
               element={
                 <PlaceholderPage

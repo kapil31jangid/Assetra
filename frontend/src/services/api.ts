@@ -72,6 +72,13 @@ export const api = {
       .then(responseData);
   },
 
+  async getProduct(productId: string): Promise<ApiResponse<Product>> {
+    if (envConfig.useMockApi) return mockApi.getProduct(productId);
+    return apiClient
+      .get<ApiResponse<Product>>(`/products/${productId}`)
+      .then(responseData);
+  },
+
   async getOrders(
     query?: RentalOrderListQuery,
   ): Promise<PaginatedResponse<RentalOrder>> {
