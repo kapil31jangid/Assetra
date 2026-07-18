@@ -1,2 +1,9 @@
 node_modules
 wireframe
+dist
+
+# Backend
+backend/.env
+backend/.venv/
+backend/**/__pycache__/
+backend/.pytest_cache/
