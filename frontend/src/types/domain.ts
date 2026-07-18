@@ -135,12 +135,11 @@ export interface ProductCategory {
 
 export interface ProductAttributeValue {
   id: Id;
-  label: string;
-  value?: string;
-  colorHex?: string;
+  value: string;
+  extraPrice?: number;
 }
 
-export type ProductAttributeDisplayType = "select" | "color" | "text";
+export type ProductAttributeDisplayType = "radio" | "pills" | "checkbox" | "image";
 
 export interface ProductAttribute {
   id: Id;

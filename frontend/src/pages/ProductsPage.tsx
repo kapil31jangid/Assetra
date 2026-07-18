@@ -30,6 +30,7 @@ import { useRef, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { AttributeManager } from "../components/attributes/AttributeManager";
 import {
   useCategoriesQuery,
   useCreateCategoryMutation,
@@ -548,9 +549,12 @@ export function ProductsPage() {
       <Tabs onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} value={tab}>
         <Tab label="Products" />
         <Tab label="Categories" />
+        <Tab label="Attributes" />
       </Tabs>
 
-      {tab === 1 ? (
+      {tab === 2 ? (
+        <AttributeManager />
+      ) : tab === 1 ? (
         <CategoryManager />
       ) : products.isLoading ? (
         <LoadingState label="Loading products" />

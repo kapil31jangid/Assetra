@@ -20,6 +20,7 @@ import type {
   Invoice,
   Pricelist,
   Product,
+  ProductAttribute,
   RentalOrder,
   Session,
 } from "../types";
@@ -48,7 +49,11 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string | null;
-  avatarUrl?: string;
+  companyName?: string | null;
+  companyLogoUrl?: string | null;
+  gstId?: string | null;
+  address?: string | null;
+  avatarUrl?: string | null;
   role: string;
 }
 
@@ -165,6 +170,26 @@ export const api = {
   },
 
   // -------------------------------------------------------------------------
+  // Attributes
+  // -------------------------------------------------------------------------
+
+  async getAttributes(): Promise<ApiResponse<ProductAttribute[]>> {
+    return apiClient.get<ApiResponse<ProductAttribute[]>>("/attributes").then(responseData);
+  },
+
+  async createAttribute(request: Omit<ProductAttribute, "id">): Promise<ApiResponse<ProductAttribute>> {
+    return apiClient.post<ApiResponse<ProductAttribute>>("/attributes", request).then(responseData);
+  },
+
+  async updateAttribute(id: string, request: Omit<ProductAttribute, "id">): Promise<ApiResponse<ProductAttribute>> {
+    return apiClient.put<ApiResponse<ProductAttribute>>(`/attributes/${id}`, request).then(responseData);
+  },
+
+  async deleteAttribute(id: string): Promise<ApiResponse<{ deleted: boolean }>> {
+    return apiClient.delete<ApiResponse<{ deleted: boolean }>>(`/attributes/${id}`).then(responseData);
+  },
+
+  // -------------------------------------------------------------------------
   // Products
   // -------------------------------------------------------------------------
 
@@ -276,6 +301,24 @@ export const api = {
       .then(responseData);
   },
 
+  async getUsers(query?: ListQuery): Promise<PaginatedResponse<UserProfile>> {
+    return apiClient
+      .get<PaginatedResponse<UserProfile>>("/users", { params: query })
+      .then(responseData);
+  },
+
+  async getUser(id: string): Promise<ApiResponse<UserProfile>> {
+    return apiClient.get<ApiResponse<UserProfile>>(`/users/${id}`).then(responseData);
+  },
+
+  async createUser(user: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
+    return apiClient.post<ApiResponse<UserProfile>>("/users", user).then(responseData);
+  },
+
+  async updateUser(id: string, user: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
+    return apiClient.put<ApiResponse<UserProfile>>(`/users/${id}`, user).then(responseData);
+  },
+
   async getSettings(): Promise<ApiResponse<OrganizationSettings>> {
     return apiClient.get<ApiResponse<OrganizationSettings>>("/settings").then(responseData);
   },
@@ -296,7 +339,7 @@ export const api = {
     return apiClient.get<ApiResponse<UserProfile>>("/session/me").then(responseData);
   },
 
-  async updateProfile(profile: Pick<UserProfile, "name" | "phone">): Promise<ApiResponse<UserProfile>> {
+  async updateProfile(profile: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
     return apiClient.put<ApiResponse<UserProfile>>("/session/me", profile).then(responseData);
   },
 };

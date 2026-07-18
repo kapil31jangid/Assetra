@@ -6,6 +6,11 @@ import {
   type CreateCategoryRequest,
   type CreateProductRequest,
   type OrganizationSettings,
+  type Pricelist,
+  type Product,
+  type ProductAttribute,
+  type RentalOrder,
+  type Session,
   type UpdateProductRequest,
   type UserProfile,
 } from "./api";
@@ -13,6 +18,7 @@ import type {
   CreateRentalOrderRequest,
   ForgotPasswordRequest,
   LoginRequest,
+  ListQuery,
   ProductListQuery,
   RecordFulfillmentRequest,
   RentalOrderListQuery,
@@ -127,6 +133,38 @@ export const useDeleteCategoryMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories });
     },
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Attributes
+// ---------------------------------------------------------------------------
+
+export const useAttributesQuery = () =>
+  useQuery({ queryKey: ["attributes"], queryFn: api.getAttributes });
+
+export const useCreateAttributeMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: Omit<ProductAttribute, "id">) => api.createAttribute(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
+  });
+};
+
+export const useUpdateAttributeMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: Omit<ProductAttribute, "id"> }) =>
+      api.updateAttribute(id, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
+  });
+};
+
+export const useDeleteAttributeMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteAttribute(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
   });
 };
 
@@ -278,7 +316,33 @@ export const useProfileQuery = () =>
 export const useProfileMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (profile: Pick<UserProfile, "name" | "phone">) => api.updateProfile(profile),
+    mutationFn: (profile: Partial<UserProfile>) => api.updateProfile(profile),
     onSuccess: (profile) => queryClient.setQueryData(["profile"], profile),
+  });
+};
+
+export const useUsersQuery = (query?: ListQuery) =>
+  useQuery({ queryKey: ["users", query], queryFn: () => api.getUsers(query) });
+
+export const useUserQuery = (id: string) =>
+  useQuery({ queryKey: ["users", id], queryFn: () => api.getUser(id) });
+
+export const useCreateUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (user: Partial<UserProfile>) => api.createUser(user),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+  });
+};
+
+export const useUpdateUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, user }: { id: string; user: Partial<UserProfile> }) =>
+      api.updateUser(id, user),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users", id] });
+    },
   });
 };
