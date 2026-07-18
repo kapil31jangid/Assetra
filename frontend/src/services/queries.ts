@@ -5,6 +5,8 @@ import {
   type Category,
   type CreateCategoryRequest,
   type CreateProductRequest,
+  type CreatePricelistRequest,
+  type UpdatePricelistRequest,
   type OrganizationSettings,
   type Pricelist,
   type Product,
@@ -298,6 +300,38 @@ export const usePricelistsQuery = () =>
     queryKey: queryKeys.pricelists,
     queryFn: api.getPricelists,
   });
+
+export const usePricelistQuery = (id?: string) =>
+  useQuery({
+    queryKey: ["pricing", "pricelists", id],
+    queryFn: () => api.getPricelist(id!),
+    enabled: !!id,
+  });
+
+export const useCreatePricelistMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreatePricelistRequest) => api.createPricelist(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pricelists }),
+  });
+};
+
+export const useUpdatePricelistMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: UpdatePricelistRequest }) =>
+      api.updatePricelist(id, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pricelists }),
+  });
+};
+
+export const useDeletePricelistMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deletePricelist(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pricelists }),
+  });
+};
 
 export const useSettingsQuery = () =>
   useQuery({ queryKey: ["settings"], queryFn: api.getSettings });

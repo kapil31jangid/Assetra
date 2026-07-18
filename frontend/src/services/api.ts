@@ -85,6 +85,14 @@ export interface CreateCategoryRequest {
   slug: string;
 }
 
+export interface CreatePricelistRequest {
+  name: string;
+  isDefault: boolean;
+  rules: any[]; // Using any for brevity here, or Omit<PricingRule, "id"> 
+}
+
+export type UpdatePricelistRequest = Partial<CreatePricelistRequest>;
+
 const responseData = <T>(response: AxiosResponse<T>) => response.data;
 const persistSession = <T extends ApiResponse<Session>>(response: T) => {
   window.localStorage.setItem("assetra.session", JSON.stringify(response));
@@ -269,6 +277,30 @@ export const api = {
   async getPricelists(): Promise<ApiResponse<Pricelist[]>> {
     return apiClient
       .get<ApiResponse<Pricelist[]>>("/pricelists")
+      .then(responseData);
+  },
+
+  async getPricelist(id: string): Promise<ApiResponse<Pricelist>> {
+    return apiClient
+      .get<ApiResponse<Pricelist>>(`/pricelists/${id}`)
+      .then(responseData);
+  },
+
+  async createPricelist(request: CreatePricelistRequest): Promise<ApiResponse<Pricelist>> {
+    return apiClient
+      .post<ApiResponse<Pricelist>>("/pricelists", request)
+      .then(responseData);
+  },
+
+  async updatePricelist(id: string, request: UpdatePricelistRequest): Promise<ApiResponse<Pricelist>> {
+    return apiClient
+      .put<ApiResponse<Pricelist>>(`/pricelists/${id}`, request)
+      .then(responseData);
+  },
+
+  async deletePricelist(id: string): Promise<ApiResponse<void>> {
+    return apiClient
+      .delete<ApiResponse<void>>(`/pricelists/${id}`)
       .then(responseData);
   },
 

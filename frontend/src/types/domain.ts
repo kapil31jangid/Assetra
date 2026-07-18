@@ -221,26 +221,23 @@ export interface Product {
   deposit: ProductDeposit;
 }
 
-export type PricingRuleKind = "fixed_price" | "discount";
+export type PricingRuleKind = "discount" | "fixed";
 
 export interface PricingRule {
   id: Id;
-  periodUnit: RentalPeriodUnit;
-  kind: PricingRuleKind;
-  fixedPrice?: Money;
-  discountPercent?: number;
-  minimumQuantity: number;
-  validFrom?: IsoDate;
-  validTo?: IsoDate;
+  appliesTo: "all" | Id[];
+  priceType: PricingRuleKind;
+  value: number;
+  minQty: number;
+  validityStart?: string;
+  validityEnd?: string;
   selectable: boolean;
 }
 
 export interface Pricelist {
   id: Id;
   name: string;
-  currency: CurrencyCode;
-  selectable: boolean;
-  active: boolean;
+  isDefault: boolean;
   rules: PricingRule[];
 }
 

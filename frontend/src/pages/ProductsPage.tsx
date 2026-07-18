@@ -8,6 +8,8 @@ import { CategoryManager } from "../components/CategoryManager";
 import { AttributeManager } from "../components/attributes/AttributeManager";
 import { ProductList } from "../components/products/ProductList";
 
+import { PricelistList } from "../components/pricelists/PricelistList";
+
 export function ProductsPage() {
   const [tab, setTab] = useState(0);
 
@@ -23,12 +25,14 @@ export function ProductsPage() {
           <Tab label="Products" />
           <Tab label="Categories" />
           <Tab label="Attributes" />
+          <Tab label="Pricelists" />
         </Tabs>
       </Box>
 
       {tab === 0 && <ProductList />}
       {tab === 1 && <CategoryManager />}
       {tab === 2 && <AttributeManager />}
+      {tab === 3 && <PricelistList />}
     </>
   );
 }
