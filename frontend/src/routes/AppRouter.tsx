@@ -94,14 +94,14 @@ const QuotationsPage = lazy(() =>
     default: module.QuotationsPage,
   })),
 );
-const ReportsPage = lazy(() =>
-  import("../pages/ReportsPage").then((module) => ({
-    default: module.ReportsPage,
+const OperationsReportsPage = lazy(() =>
+  import("../pages/OperationsReportsPage").then((module) => ({
+    default: module.OperationsReportsPage,
   })),
 );
-const SchedulePage = lazy(() =>
-  import("../pages/SchedulePage").then((module) => ({
-    default: module.SchedulePage,
+const OperationsSchedulerPage = lazy(() =>
+  import("../pages/OperationsSchedulerPage").then((module) => ({
+    default: module.OperationsSchedulerPage,
   })),
 );
 const SettingsPage = lazy(() =>
@@ -149,8 +149,8 @@ export function AppRouter() {
               />
               <Route element={<ProductsPage />} path={ROUTES.products} />
               <Route element={<PricingPage />} path={ROUTES.pricing} />
-              <Route element={<SchedulePage />} path={ROUTES.schedule} />
-              <Route element={<ReportsPage />} path={ROUTES.reports} />
+              <Route element={<OperationsSchedulerPage />} path={ROUTES.schedule} />
+              <Route element={<OperationsReportsPage />} path={ROUTES.reports} />
               <Route element={<SettingsPage />} path={ROUTES.settings} />
             </Route>
           </Route>
