@@ -10,6 +10,9 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../../constants/routes";
+
 import { PageHeader } from "../PageHeader";
 import { OrderLinesTable } from "./OrderLinesTable";
 import type { RentalOrder, RentalOrderLine, Product } from "../../types";
@@ -32,6 +35,7 @@ interface OrderFormProps {
 }
 
 export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps) {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<RentalOrder["status"]>(order?.status || "quotation");
   const [customerId, setCustomerId] = useState(order?.customer?.id || "");
   const [invoiceAddress, setInvoiceAddress] = useState(order?.invoiceAddress || "");
@@ -100,7 +104,14 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
             )}
             {status === "sale_order" && (
               <>
-                <Button variant="contained" size="small" color="primary">Create Invoice</Button>
+                <Button 
+                  variant="contained" 
+                  size="small" 
+                  color="primary"
+                  onClick={() => navigate(`${ROUTES.operationsInvoices}?new_from_order=${order?.id || "draft_order"}`)}
+                >
+                  Create Invoice
+                </Button>
                 <Button variant="contained" size="small" color="success">Pickup</Button>
                 <Button size="small">Print</Button>
                 <Button onClick={() => handleAction("cancelled")} color="error" size="small">Cancel Order</Button>

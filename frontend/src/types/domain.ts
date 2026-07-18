@@ -415,29 +415,46 @@ export interface RentalOrder {
   totalAmount?: number;
 }
 
-export type InvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
+export type InvoiceStatus = "draft" | "posted" | "cancelled";
+export type PaymentStatus = "unpaid" | "partially_paid" | "paid";
 
 export interface InvoiceLine {
-  id: Id;
-  description: string;
-  quantity: number;
-  unitPrice: Money;
-  total: Money;
+  id?: Id;
+  product_id?: Id;
+  description?: string;
+  qty: number;
+  unit?: string;
+  unit_price: number;
+  tax_percent: number;
+  amount: number;
+}
+
+export interface InvoicePayment {
+  amount: number;
+  method: string;
+  date: string;
 }
 
 export interface Invoice {
   id: Id;
-  number: string;
-  orderId?: Id;
-  customer: CustomerSummary;
+  invoice_number?: string;
+  number?: string;
+  order_id?: Id;
+  customer_id?: Id;
+  customer?: CustomerSummary;
+  invoice_date?: string;
+  invoice_address?: string;
+  delivery_address?: string;
   status: InvoiceStatus;
+  payment_status: PaymentStatus;
   lines: InvoiceLine[];
-  subtotal: Money;
-  tax: Money;
-  total: Money;
+  untaxed_amount: number;
+  tax_amount: number;
+  total: number;
+  payments: InvoicePayment[];
   dueAt?: IsoDate;
   issuedAt?: IsoDateTime;
-  createdAt: IsoDateTime;
+  createdAt?: IsoDateTime;
 }
 
 export interface DashboardKpi {

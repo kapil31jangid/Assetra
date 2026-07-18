@@ -1,169 +1,198 @@
-import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
-import PrintOutlinedIcon from "@mui/icons-material/PrintOutlined";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
-import { useInvoicesQuery } from "../services/queries";
-import type { Invoice, InvoiceStatus } from "../types";
+import { InvoiceForm } from "../components/invoices/InvoiceForm";
+import { useInvoicesQuery, useProductsQuery, useOrdersQuery } from "../services/queries";
+import type { Invoice, InvoiceStatus, RentalOrderLine } from "../types";
 import { formatMoney } from "../utils/catalog";
 
-const invoiceColor: Record<InvoiceStatus, "default" | "info" | "success" | "error"> = {
-  draft: "default",
-  posted: "info",
-  paid: "success",
-  cancelled: "error",
+const getStatusColor = (status: InvoiceStatus) => {
+  switch (status) {
+    case "draft": return "default";
+    case "posted": return "info";
+    case "cancelled": return "error";
+    default: return "default";
+  }
 };
 
 export function OperationsInvoicesPage() {
-  const invoices = useInvoicesQuery();
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const newFromOrder = searchParams.get("new_from_order");
 
-  if (invoices.isLoading) return <LoadingState label="Loading invoices" />;
-  if (invoices.isError || !invoices.data)
+  const invoices = useInvoicesQuery({ pageSize: 100 });
+  const products = useProductsQuery({ pageSize: 100 });
+  // In a real app we'd fetch just the specific order, but this is a mock scaffold
+  const orders = useOrdersQuery({ pageSize: 100 });
+
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | "new" | null>(null);
+
+  useEffect(() => {
+    if (newFromOrder && orders.isSuccess && !editingInvoice) {
+      // Find the order
+      const order = orders.data?.data.find((o) => o.id === newFromOrder);
+      if (order) {
+        // Pre-fill invoice with order data
+        const newInvoice: Invoice = {
+          id: `new_inv_${Date.now()}`,
+          order_id: order.id,
+          customer_id: order.customerId || order.customer?.id,
+          customer: order.customer,
+          invoice_address: order.invoiceAddress || "",
+          delivery_address: order.deliveryAddress || "",
+          status: "draft",
+          payment_status: "unpaid",
+          lines: order.lines.map((l) => ({
+            product_id: l.productId || l.product_id,
+            description: l.productName || l.noteText || "Line item",
+            qty: l.quantity || l.qty,
+            unit: l.unit || "Days",
+            unit_price: l.unitPrice?.amount || l.unit_price,
+            tax_percent: l.taxPercent || l.tax_percent || 0,
+            amount: l.lineTotal?.amount || l.amount || 0,
+          })),
+          untaxed_amount: order.untaxedAmount || order.price?.rental?.amount || 0,
+          tax_amount: order.taxAmount || order.price?.tax?.amount || 0,
+          total: order.totalAmount || order.price?.total?.amount || 0,
+          payments: [],
+        };
+        setEditingInvoice(newInvoice);
+      } else {
+        setEditingInvoice("new");
+      }
+    }
+  }, [newFromOrder, orders.isSuccess]);
+
+  const handleSave = (invoiceData: Partial<Invoice>) => {
+    console.log("Saving invoice", invoiceData);
+    if (newFromOrder) {
+      // Clear URL params
+      setSearchParams({});
+    }
+    setEditingInvoice(null);
+  };
+
+  const handleCancel = () => {
+    if (newFromOrder) {
+      setSearchParams({});
+    }
+    setEditingInvoice(null);
+  };
+
+  if (invoices.isLoading || products.isLoading || orders.isLoading) {
+    return <LoadingState label="Loading invoices" />;
+  }
+  
+  if (invoices.isError) {
     return <ErrorState message="Invoices could not be loaded." />;
+  }
 
-  const invoiceItems = invoices.data.data;
-  const selectedInvoice =
-    invoiceItems.find((invoice) => invoice.id === selectedInvoiceId) ??
-    invoiceItems[0];
+  if (editingInvoice !== null) {
+    const invoiceData = editingInvoice === "new" ? {
+      id: `new_inv_${Date.now()}`,
+      status: "draft" as InvoiceStatus,
+      payment_status: "unpaid" as const,
+      lines: [],
+      untaxed_amount: 0,
+      tax_amount: 0,
+      total: 0,
+      payments: [],
+    } : editingInvoice;
+
+    return (
+      <InvoiceForm 
+        invoice={invoiceData as Invoice}
+        products={products.data?.data || []}
+        onSave={handleSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
+
+  const invoiceItems = invoices.data?.data || [];
 
   return (
     <>
       <PageHeader
-        description="Review invoice state, details, and print/download placeholders."
+        actions={
+          <Button
+            onClick={() => setEditingInvoice("new")}
+            startIcon={<AddOutlinedIcon />}
+            variant="contained"
+          >
+            New Invoice
+          </Button>
+        }
+        description="Review invoice state, details, and record payments."
         title="Invoices"
       />
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <Stack spacing={1.5}>
+      <Card>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Number</TableCell>
+              <TableCell>Customer</TableCell>
+              <TableCell>Due Date</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Payment</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {invoiceItems.map((invoice) => (
-              <InvoiceCard
-                invoice={invoice}
+              <TableRow
+                hover
                 key={invoice.id}
-                onSelect={() => setSelectedInvoiceId(invoice.id)}
-                selected={selectedInvoice?.id === invoice.id}
-              />
-            ))}
-          </Stack>
-        </Grid>
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Card>
-            <CardContent>
-              <Typography sx={{ mb: 2 }} variant="h3">
-                Invoice detail
-              </Typography>
-              {selectedInvoice ? (
-                <Stack spacing={1.5}>
+                onClick={() => setEditingInvoice(invoice)}
+                sx={{ cursor: "pointer" }}
+              >
+                <TableCell>{invoice.invoice_number || invoice.number}</TableCell>
+                <TableCell>{invoice.customer?.name}</TableCell>
+                <TableCell>{invoice.dueAt || "On Receipt"}</TableCell>
+                <TableCell>{formatMoney({ amount: invoice.total, currency: "USD" })}</TableCell>
+                <TableCell>
                   <Chip
-                    color={invoiceColor[selectedInvoice.status]}
-                    label={selectedInvoice.status}
-                    sx={{ textTransform: "capitalize", width: "fit-content" }}
+                    label={invoice.status}
+                    color={getStatusColor(invoice.status)}
+                    size="small"
+                    sx={{ textTransform: "capitalize" }}
                   />
-                  <Typography variant="h2">{selectedInvoice.number}</Typography>
-                  <Typography color="text.secondary" variant="body2">
-                    {selectedInvoice.customer.name} · {selectedInvoice.customer.email}
-                  </Typography>
-                  <Divider />
-                  {selectedInvoice.lines.map((line) => (
-                    <Stack
-                      direction="row"
-                      key={line.id}
-                      sx={{ justifyContent: "space-between" }}
-                    >
-                      <Typography variant="body2">{line.description}</Typography>
-                      <Typography sx={{ fontWeight: 700 }} variant="body2">
-                        {formatMoney(line.total)}
-                      </Typography>
-                    </Stack>
-                  ))}
-                  <Divider />
-                  <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                    <Typography color="text.secondary" variant="body2">
-                      Tax
-                    </Typography>
-                    <Typography variant="body2">
-                      {formatMoney(selectedInvoice.tax)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                    <Typography variant="h4">Total</Typography>
-                    <Typography variant="h4">
-                      {formatMoney(selectedInvoice.total)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      onClick={() => window.print()}
-                      startIcon={<PrintOutlinedIcon />}
-                      variant="outlined"
-                    >
-                      Print
-                    </Button>
-                    <Button startIcon={<DownloadOutlinedIcon />} variant="outlined">
-                      Download
-                    </Button>
-                  </Stack>
-                </Stack>
-              ) : null}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                </TableCell>
+                <TableCell>
+                  {invoice.payment_status === "paid" && <Chip label="Paid" color="success" size="small" />}
+                  {invoice.payment_status === "partially_paid" && <Chip label="Partial" color="warning" size="small" />}
+                  {(!invoice.payment_status || invoice.payment_status === "unpaid") && <Chip label="Unpaid" size="small" />}
+                </TableCell>
+              </TableRow>
+            ))}
+            {invoiceItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ textAlign: "center", py: 4 }}>
+                  No invoices found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </>
-  );
-}
-
-function InvoiceCard({
-  invoice,
-  selected,
-  onSelect,
-}: {
-  invoice: Invoice;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Card
-      onClick={onSelect}
-      sx={{
-        borderColor: selected ? "primary.main" : "divider",
-        cursor: "pointer",
-      }}
-    >
-      <CardContent>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          sx={{ justifyContent: "space-between" }}
-        >
-          <div>
-            <Typography variant="h3">{invoice.number}</Typography>
-            <Typography color="text.secondary" variant="body2">
-              {invoice.customer.name} · due {invoice.dueAt ?? "on receipt"}
-            </Typography>
-          </div>
-          <Stack direction="row" spacing={1}>
-            <Chip
-              color={invoiceColor[invoice.status]}
-              label={invoice.status}
-              size="small"
-              sx={{ textTransform: "capitalize" }}
-            />
-            <Chip label={formatMoney(invoice.total)} size="small" />
-          </Stack>
-        </Stack>
-      </CardContent>
-    </Card>
   );
 }
