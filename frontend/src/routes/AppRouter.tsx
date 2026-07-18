@@ -13,6 +13,8 @@ import { CatalogPage } from "../pages/CatalogPage";
 import { CartPage } from "../pages/CartPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
 import { CheckoutSuccessPage } from "../pages/CheckoutSuccessPage";
+import { CustomerInvoicesPage } from "../pages/CustomerInvoicesPage";
+import { CustomerOrdersPage } from "../pages/CustomerOrdersPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
@@ -20,7 +22,9 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { ProductDetailPage } from "../pages/ProductDetailPage";
+import { ProfilePage } from "../pages/ProfilePage";
 import { SignupPage } from "../pages/SignupPage";
+import { WishlistPage } from "../pages/WishlistPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 export function AppRouter() {
@@ -124,42 +128,13 @@ export function AppRouter() {
               element={<CheckoutSuccessPage />}
               path={ROUTES.checkoutSuccess}
             />
+            <Route element={<CustomerOrdersPage />} path={ROUTES.customerOrders} />
             <Route
-              element={
-                <PlaceholderPage
-                  description="Customer rental history placeholder."
-                  title="My Orders"
-                />
-              }
-              path={ROUTES.customerOrders}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Customer invoice access placeholder."
-                  title="My Invoices"
-                />
-              }
+              element={<CustomerInvoicesPage />}
               path={ROUTES.customerInvoices}
             />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Saved products placeholder."
-                  title="Wishlist"
-                />
-              }
-              path={ROUTES.wishlist}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Customer profile placeholder."
-                  title="Profile"
-                />
-              }
-              path={ROUTES.profile}
-            />
+            <Route element={<WishlistPage />} path={ROUTES.wishlist} />
+            <Route element={<ProfilePage />} path={ROUTES.profile} />
           </Route>
         </Route>
 
