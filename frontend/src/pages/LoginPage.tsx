@@ -14,6 +14,9 @@ import { z } from "zod";
 import { ROUTES } from "../constants/routes";
 import { useLoginMutation, useSessionQuery } from "../services/queries";
 import { getRoleHomeRoute } from "../utils/auth";
+import InputAdornment from "@mui/material/InputAdornment";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import Divider from "@mui/material/Divider";
 
 const loginSchema = z.object({
   email: z.email("Enter a valid email address."),
@@ -21,6 +24,7 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
 
 const demoAccounts = [
   { label: "Admin", email: "admin@assetra.local" },
@@ -65,9 +69,23 @@ export function LoginPage() {
       spacing={2.5}
     >
       <Box>
-        <Typography component="h1" variant="h1">
-          Sign in
-        </Typography>
+<Typography
+  component="h1"
+  variant="h3"
+  sx={{
+    mb: 1,
+    fontWeight: 700,
+  }}
+>
+  Welcome Back 👋
+</Typography>
+
+<Typography
+  color="text.secondary"
+  variant="body1"
+>
+  Sign in to manage your rental assets securely.
+</Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
           Use a demo account to enter the customer portal or operations
           workspace.
@@ -82,31 +100,100 @@ export function LoginPage() {
         </Alert>
       ) : null}
 
+<TextField
+  autoComplete="username"
+  autoFocus
+  fullWidth
+  size="medium"
+  margin="normal"
+  error={Boolean(errors.email)}
+  helperText={errors.email?.message}
+  label="Email Address"
+  type="email"
+  placeholder="Enter your email"
+  {...register("email")}
+  slotProps={{
+  input: {
+    startAdornment: (
+      <InputAdornment position="start">
+        <EmailOutlinedIcon />
+      </InputAdornment>
+    ),
+  },
+}}
+  sx={{
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "12px",
+      height: "56px",
+      transition: "0.3s",
+      "&:hover": {
+        boxShadow: "0 0 8px rgba(25,118,210,0.15)",
+      },
+      "&.Mui-focused": {
+        boxShadow: "0 0 10px rgba(25,118,210,0.25)",
+      },
+    },
+  }}
+/>
       <TextField
-        autoComplete="email"
-        autoFocus
-        error={Boolean(errors.email)}
-        fullWidth
-        helperText={errors.email?.message}
-        label="Email"
-        type="email"
-        {...register("email")}
-      />
-      <TextField
-        autoComplete="current-password"
-        error={Boolean(errors.password)}
-        fullWidth
-        helperText={errors.password?.message}
-        label="Password"
-        type="password"
-        {...register("password")}
-      />
+  autoComplete="current-password"
+  error={Boolean(errors.password)}
+  fullWidth
+  helperText={errors.password?.message}
+  label="Password"
+  type="password"
+  placeholder="Enter your password"
+  size="medium"
+  margin="normal"
+  {...register("password")}
+  sx={{
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "12px",
+      height: "56px",
+      transition: "0.3s",
+      "&:hover": {
+        boxShadow: "0 0 8px rgba(25,118,210,0.15)",
+      },
+      "&.Mui-focused": {
+        boxShadow: "0 0 10px rgba(25,118,210,0.25)",
+      },
+    },
+  }}
+/>
 
-      <Button disabled={login.isPending} type="submit" variant="contained">
-        {login.isPending ? <CircularProgress color="inherit" size={20} /> : null}
-        Sign in
-      </Button>
+    <Button
+  variant="contained"
+  fullWidth
+  size="large"
+  disableElevation
+  disabled={login.isPending}
+  type="submit"
+  sx={{
+    mt: 2,
+    height: 56,
+    borderRadius: "12px",
+    fontWeight: 700,
+    fontSize: "16px",
+    textTransform: "none",
+    backgroundColor: "#2563EB",
+    "&:hover": {
+      backgroundColor: "#1D4ED8",
+    },
+  }}
+>
+  {login.isPending ? (
+    <CircularProgress
+      color="inherit"
+      size={20}
+      sx={{ mr: 1 }}
+    />
+  ) : null}
+  Sign In
+</Button>
 
+      <Divider sx={{ my: 2 }}>
+  Demo Accounts
+</Divider>
       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
         {demoAccounts.map((account) => (
           <Button
@@ -122,22 +209,51 @@ export function LoginPage() {
           </Button>
         ))}
       </Stack>
+<Divider sx={{ my: 2 }} />
 
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1}
-        sx={{
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-        }}
-      >
-        <Link component={RouterLink} to={ROUTES.signup} variant="body2">
-          Create account
-        </Link>
-        <Link component={RouterLink} to={ROUTES.forgotPassword} variant="body2">
-          Forgot password?
-        </Link>
-      </Stack>
+<Stack
+  direction={{ xs: "column", sm: "row" }}
+  spacing={2}
+  sx={{
+    justifyContent: "space-between",
+    alignItems: "center",
+    mt: 1,
+  }}
+>
+  <Link
+    component={RouterLink}
+    to={ROUTES.signup}
+    underline="hover"
+    variant="body2"
+    sx={{
+      fontWeight: 600,
+      color: "primary.main",
+      transition: "0.2s",
+      "&:hover": {
+        color: "primary.dark",
+      },
+    }}
+  >
+    New here? Create an Account
+  </Link>
+
+  <Link
+    component={RouterLink}
+    to={ROUTES.forgotPassword}
+    underline="hover"
+    variant="body2"
+    sx={{
+      fontWeight: 600,
+      color: "primary.main",
+      transition: "0.2s",
+      "&:hover": {
+        color: "primary.dark",
+      },
+    }}
+  >
+    Forgot Password?
+  </Link>
+</Stack>
     </Stack>
   );
 }
