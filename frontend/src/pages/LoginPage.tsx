@@ -48,7 +48,7 @@ export function LoginPage() {
   const from = (location.state as { from?: { pathname?: string } } | null)
     ?.from?.pathname;
 
-  if (session.data?.data.user) {
+  if (session.data?.data?.user) {
     return (
       <Navigate
         replace

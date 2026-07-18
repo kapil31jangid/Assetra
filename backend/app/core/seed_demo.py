@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
 from app.core.model_registry import *  # noqa: F403
 from app.core.seed_data import INVOICES, ORDERS, PRICELISTS, PRODUCTS, USERS
+from app.core.models import Organization
+from app.core.security import hash_password
 from app.modules.auth.models import User
 from app.modules.catalog.models import Product, ProductCategory, ProductVariant
 from app.modules.invoices.models import Invoice, InvoiceLine
@@ -27,6 +29,7 @@ def money_currency(value: dict[str, Any]) -> str:
 
 
 async def seed_users(session: AsyncSession) -> None:
+    await session.merge(Organization(id="org_default", name="Assetra Rental Company", currency="INR", timezone="Asia/Kolkata", tax_rate=18, grace_period_minutes=30, late_fee_unit="hourly", late_fee_amount=250, late_fee_maximum=10000, deposit_refund_window_days=3, active=True))
     for user in USERS.values():
         await session.merge(
             User(
@@ -34,6 +37,8 @@ async def seed_users(session: AsyncSession) -> None:
                 name=user["name"],
                 email=user["email"],
                 role=user["role"],
+                password_hash=hash_password("password"),
+                organization_id="org_default",
                 active=True,
             )
         )

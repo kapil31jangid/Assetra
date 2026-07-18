@@ -159,6 +159,41 @@ PRODUCTS: list[dict[str, Any]] = [
         "rentalUnits": ["daily", "weekly"],
         "active": True,
     },
+    {
+        "id": "prd_drone_01",
+        "name": "DJI Mavic 3 Pro Drone",
+        "slug": "dji-mavic-3-pro",
+        "description": "Professional drone with Hasselblad camera.",
+        "category": {"id": "cat_drone", "name": "Drones", "slug": "drones"},
+        "brand": "DJI",
+        "colors": ["Grey"],
+        "tags": ["drone", "aerial", "video"],
+        "imageUrls": [],
+        "attributes": [],
+        "variants": [
+            {
+                "id": "var_drone_flymore",
+                "productId": "prd_drone_01",
+                "name": "Fly More Combo",
+                "sku": "DRN-DJI-M3P",
+                "attributeValueIds": [],
+                "repairStatus": "ready",
+                "stock": {"total": 5, "available": 3, "reserved": 1, "inUse": 1, "underRepair": 0},
+            }
+        ],
+        "accessories": [],
+        "depositPolicy": {
+            "required": True,
+            "amount": inr(25000),
+            "refundable": True,
+            "refundWindowDays": 3,
+        },
+        "repairStatus": "ready",
+        "stock": {"total": 5, "available": 3, "reserved": 1, "inUse": 1, "underRepair": 0},
+        "availabilityStatus": "available",
+        "rentalUnits": ["daily", "weekly"],
+        "active": True,
+    },
 ]
 
 
@@ -243,6 +278,67 @@ ORDERS: list[dict[str, Any]] = [
         "invoiceIds": ["inv_1001"],
         "createdAt": "2026-07-18T09:30:00+05:30",
         "updatedAt": "2026-07-18T10:05:00+05:30",
+    },
+    {
+        "id": "ord_1002",
+        "number": "RO-1002",
+        "customer": {
+            "id": "cus_02",
+            "name": "Rohan Sharma",
+            "email": "rohan@example.com",
+            "phone": "+91 98765 11111",
+        },
+        "vendorId": "ven_01",
+        "status": "picked_up",
+        "lines": [
+            {
+                "id": "line_1002_1",
+                "productId": "prd_drone_01",
+                "variantId": "var_drone_flymore",
+                "productName": "DJI Mavic 3 Pro Drone",
+                "variantName": "Fly More Combo",
+                "sku": "DRN-DJI-M3P",
+                "quantity": 1,
+                "rentalPeriod": {
+                    "startsAt": "2026-07-16T10:00:00+05:30",
+                    "endsAt": "2026-07-19T10:00:00+05:30",
+                    "unit": "daily",
+                    "quantity": 3,
+                    "timezone": "Asia/Kolkata",
+                },
+                "unitPrice": inr(4000),
+                "lineTotal": inr(12000),
+                "accessories": [],
+            }
+        ],
+        "schedule": {
+            "mode": "store_pickup",
+            "scheduledPickupAt": "2026-07-16T10:00:00+05:30",
+            "scheduledReturnAt": "2026-07-19T10:00:00+05:30",
+            "actualPickupAt": "2026-07-16T10:15:00+05:30",
+            "gracePeriodMinutes": 30,
+        },
+        "price": {
+            "rental": inr(12000),
+            "delivery": inr(0),
+            "discount": inr(0),
+            "deposit": inr(25000),
+            "tax": inr(2160),
+            "total": inr(39160),
+        },
+        "deposit": {
+            "required": True,
+            "amount": inr(25000),
+            "refundable": True,
+            "refundWindowDays": 3,
+        },
+        "depositTransactions": [],
+        "lateFees": [],
+        "damageReports": [],
+        "fulfillmentEvents": [],
+        "invoiceIds": ["inv_1002"],
+        "createdAt": "2026-07-15T09:30:00+05:30",
+        "updatedAt": "2026-07-16T10:15:00+05:30",
     }
 ]
 
@@ -269,6 +365,28 @@ INVOICES: list[dict[str, Any]] = [
         "dueAt": "2026-07-20",
         "issuedAt": "2026-07-18T10:10:00+05:30",
         "createdAt": "2026-07-18T10:10:00+05:30",
+    },
+    {
+        "id": "inv_1002",
+        "number": "INV-1002",
+        "orderId": "ord_1002",
+        "customer": {"id": "cus_02", "name": "Rohan Sharma", "email": "rohan@example.com"},
+        "status": "paid",
+        "lines": [
+            {
+                "id": "inv_line_1002",
+                "description": "DJI Mavic 3 Pro Drone rental",
+                "quantity": 3,
+                "unitPrice": inr(4000),
+                "total": inr(12000),
+            }
+        ],
+        "subtotal": inr(12000),
+        "tax": inr(2160),
+        "total": inr(14160),
+        "dueAt": "2026-07-16",
+        "issuedAt": "2026-07-15T10:10:00+05:30",
+        "createdAt": "2026-07-15T10:10:00+05:30",
     }
 ]
 

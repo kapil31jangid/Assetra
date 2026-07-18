@@ -126,7 +126,7 @@ export function AppRouter() {
       <Suspense fallback={<LoadingState label="Loading page" />}>
         <Routes>
           <Route
-            element={<Navigate replace to={ROUTES.dashboard} />}
+            element={<Navigate replace to={ROUTES.login} />}
             path={ROUTES.root}
           />
           <Route element={<AuthLayout />}>

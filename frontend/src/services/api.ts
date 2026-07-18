@@ -15,7 +15,6 @@ import type {
   UpdateRentalOrderStatusRequest,
 } from "./api-contract";
 import { envConfig } from "./config";
-import { mockApi } from "./mock-api";
 import type {
   DashboardSummary,
   Invoice,
@@ -25,32 +24,111 @@ import type {
   Session,
 } from "../types";
 
+export interface OrganizationSettings {
+  companyName: string;
+  currency: string;
+  timezone: string;
+  taxRate: number;
+  gracePeriodMinutes: number;
+  lateFeeUnit: string;
+  lateFeeAmount: number;
+  lateFeeMaximum?: number | null;
+  depositRefundDays: number;
+}
+
+export interface PaymentIntent {
+  id: string;
+  status: string;
+  amount: { amount: number; currency: string };
+  provider: string;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  avatarUrl?: string;
+  role: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface CreateProductRequest {
+  categoryId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  brand?: string;
+  imageUrls?: string[];
+  tags?: string[];
+  colors?: string[];
+  rentalUnits?: string[];
+  depositAmount?: number;
+  depositRequired?: boolean;
+  depositRefundable?: boolean;
+  depositRefundWindowDays?: number;
+  variants?: Array<{
+    name: string;
+    sku: string;
+    stockTotal: number;
+    imageUrl?: string;
+  }>;
+}
+
+export interface UpdateProductRequest {
+  categoryId?: string;
+  name?: string;
+  description?: string;
+  brand?: string;
+  imageUrls?: string[];
+  tags?: string[];
+  colors?: string[];
+  rentalUnits?: string[];
+  depositAmount?: number;
+  depositRequired?: boolean;
+  depositRefundable?: boolean;
+  depositRefundWindowDays?: number;
+  active?: boolean;
+  repairStatus?: string;
+  availabilityStatus?: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  slug: string;
+}
+
 const responseData = <T>(response: AxiosResponse<T>) => response.data;
+const persistSession = <T extends ApiResponse<Session>>(response: T) => {
+  window.localStorage.setItem("assetra.session", JSON.stringify(response));
+  return response;
+};
 
 export const api = {
   async getSession(): Promise<ApiResponse<Session>> {
-    if (envConfig.useMockApi) return mockApi.getSession();
-    return apiClient.get<ApiResponse<Session>>("/session").then(responseData);
+    return apiClient.get<ApiResponse<Session>>("/session").then(responseData).then(persistSession);
   },
 
   async login(request: LoginRequest): Promise<ApiResponse<Session>> {
-    if (envConfig.useMockApi) return mockApi.login(request);
     return apiClient
       .post<ApiResponse<Session>>("/session/login", request)
-      .then(responseData);
+      .then(responseData).then(persistSession);
   },
 
   async signup(request: SignupRequest): Promise<ApiResponse<Session>> {
-    if (envConfig.useMockApi) return mockApi.signup(request);
     return apiClient
       .post<ApiResponse<Session>>("/session/signup", request)
-      .then(responseData);
+      .then(responseData).then(persistSession);
   },
 
   async forgotPassword(
     request: ForgotPasswordRequest,
   ): Promise<ApiResponse<{ message: string }>> {
-    if (envConfig.useMockApi) return mockApi.forgotPassword(request);
     return apiClient
       .post<ApiResponse<{ message: string }>>(
         "/session/forgot-password",
@@ -60,39 +138,89 @@ export const api = {
   },
 
   async logout(): Promise<ApiResponse<null>> {
-    if (envConfig.useMockApi) return mockApi.logout();
+    window.localStorage.removeItem("assetra.session");
     return apiClient
       .post<ApiResponse<null>>("/session/logout")
       .then(responseData);
   },
 
+  // -------------------------------------------------------------------------
+  // Categories
+  // -------------------------------------------------------------------------
+
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    return apiClient.get<ApiResponse<Category[]>>("/categories").then(responseData);
+  },
+
+  async createCategory(request: CreateCategoryRequest): Promise<ApiResponse<Category>> {
+    return apiClient.post<ApiResponse<Category>>("/categories", request).then(responseData);
+  },
+
+  async updateCategory(id: string, request: CreateCategoryRequest): Promise<ApiResponse<Category>> {
+    return apiClient.put<ApiResponse<Category>>(`/categories/${id}`, request).then(responseData);
+  },
+
+  async deleteCategory(id: string): Promise<ApiResponse<{ deleted: boolean }>> {
+    return apiClient.delete<ApiResponse<{ deleted: boolean }>>(`/categories/${id}`).then(responseData);
+  },
+
+  // -------------------------------------------------------------------------
+  // Products
+  // -------------------------------------------------------------------------
+
   async getProducts(
-    query?: ProductListQuery,
+    query?: ProductListQuery & { includeInactive?: boolean },
   ): Promise<PaginatedResponse<Product>> {
-    if (envConfig.useMockApi) return mockApi.getProducts(query);
     return apiClient
       .get<PaginatedResponse<Product>>("/products", { params: query })
       .then(responseData);
   },
 
   async getProduct(productId: string): Promise<ApiResponse<Product>> {
-    if (envConfig.useMockApi) return mockApi.getProduct(productId);
     return apiClient
       .get<ApiResponse<Product>>(`/products/${productId}`)
       .then(responseData);
   },
 
+  async createProduct(request: CreateProductRequest): Promise<ApiResponse<Product>> {
+    return apiClient.post<ApiResponse<Product>>("/products", request).then(responseData);
+  },
+
+  async updateProduct(productId: string, request: UpdateProductRequest): Promise<ApiResponse<Product>> {
+    return apiClient.put<ApiResponse<Product>>(`/products/${productId}`, request).then(responseData);
+  },
+
+  async deleteProduct(productId: string): Promise<ApiResponse<{ deleted: boolean }>> {
+    return apiClient.delete<ApiResponse<{ deleted: boolean }>>(`/products/${productId}`).then(responseData);
+  },
+
+  // -------------------------------------------------------------------------
+  // Image upload
+  // -------------------------------------------------------------------------
+
+  async uploadImage(file: File): Promise<ApiResponse<{ url: string; filename: string }>> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient
+      .post<ApiResponse<{ url: string; filename: string }>>("/uploads/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then(responseData);
+  },
+
+  // -------------------------------------------------------------------------
+  // Orders
+  // -------------------------------------------------------------------------
+
   async getOrders(
     query?: RentalOrderListQuery,
   ): Promise<PaginatedResponse<RentalOrder>> {
-    if (envConfig.useMockApi) return mockApi.getOrders(query);
     return apiClient
       .get<PaginatedResponse<RentalOrder>>("/rental-orders", { params: query })
       .then(responseData);
   },
 
   async getOrder(orderId: string): Promise<ApiResponse<RentalOrder>> {
-    if (envConfig.useMockApi) return mockApi.getOrder(orderId);
     return apiClient
       .get<ApiResponse<RentalOrder>>(`/rental-orders/${orderId}`)
       .then(responseData);
@@ -101,7 +229,6 @@ export const api = {
   async createOrder(
     request: CreateRentalOrderRequest,
   ): Promise<ApiResponse<RentalOrder>> {
-    if (envConfig.useMockApi) return mockApi.createOrder(request);
     return apiClient
       .post<ApiResponse<RentalOrder>>("/rental-orders", request)
       .then(responseData);
@@ -111,7 +238,6 @@ export const api = {
     orderId: string,
     request: UpdateRentalOrderStatusRequest,
   ): Promise<ApiResponse<RentalOrder>> {
-    if (envConfig.useMockApi) return mockApi.updateOrderStatus(orderId, request);
     return apiClient
       .post<ApiResponse<RentalOrder>>(
         `/rental-orders/${orderId}/status`,
@@ -124,7 +250,6 @@ export const api = {
     orderId: string,
     request: RecordFulfillmentRequest,
   ): Promise<ApiResponse<RentalOrder>> {
-    if (envConfig.useMockApi) return mockApi.recordFulfillment(orderId, request);
     return apiClient
       .post<ApiResponse<RentalOrder>>(
         `/rental-orders/${orderId}/fulfillment`,
@@ -134,23 +259,44 @@ export const api = {
   },
 
   async getInvoices(query?: ListQuery): Promise<PaginatedResponse<Invoice>> {
-    if (envConfig.useMockApi) return mockApi.getInvoices(query);
     return apiClient
       .get<PaginatedResponse<Invoice>>("/invoices", { params: query })
       .then(responseData);
   },
 
   async getPricelists(): Promise<ApiResponse<Pricelist[]>> {
-    if (envConfig.useMockApi) return mockApi.getPricelists();
     return apiClient
       .get<ApiResponse<Pricelist[]>>("/pricelists")
       .then(responseData);
   },
 
   async getDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {
-    if (envConfig.useMockApi) return mockApi.getDashboardSummary();
     return apiClient
       .get<ApiResponse<DashboardSummary>>("/dashboard/summary")
       .then(responseData);
+  },
+
+  async getSettings(): Promise<ApiResponse<OrganizationSettings>> {
+    return apiClient.get<ApiResponse<OrganizationSettings>>("/settings").then(responseData);
+  },
+
+  async updateSettings(settings: OrganizationSettings): Promise<ApiResponse<OrganizationSettings>> {
+    return apiClient.put<ApiResponse<OrganizationSettings>>("/settings", settings).then(responseData);
+  },
+
+  async createPaymentIntent(orderId: string, idempotencyKey: string): Promise<ApiResponse<PaymentIntent>> {
+    return apiClient.post<ApiResponse<PaymentIntent>>("/payments/intent", { orderId, idempotencyKey }).then(responseData);
+  },
+
+  async confirmPayment(paymentId: string): Promise<ApiResponse<{ id: string; status: string; reference: string }>> {
+    return apiClient.post<ApiResponse<{ id: string; status: string; reference: string }>>("/payments/confirm", { paymentId }).then(responseData);
+  },
+
+  async getProfile(): Promise<ApiResponse<UserProfile>> {
+    return apiClient.get<ApiResponse<UserProfile>>("/session/me").then(responseData);
+  },
+
+  async updateProfile(profile: Pick<UserProfile, "name" | "phone">): Promise<ApiResponse<UserProfile>> {
+    return apiClient.put<ApiResponse<UserProfile>>("/session/me", profile).then(responseData);
   },
 };

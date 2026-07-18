@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "./api";
+import {
+  api,
+  type Category,
+  type CreateCategoryRequest,
+  type CreateProductRequest,
+  type OrganizationSettings,
+  type UpdateProductRequest,
+  type UserProfile,
+} from "./api";
 import type {
   CreateRentalOrderRequest,
   ForgotPasswordRequest,
@@ -15,13 +23,19 @@ import type {
 export const queryKeys = {
   session: ["session"] as const,
   dashboard: ["dashboard", "summary"] as const,
-  products: (query?: ProductListQuery) => ["products", query ?? {}] as const,
+  categories: ["categories"] as const,
+  products: (query?: ProductListQuery & { includeInactive?: boolean }) =>
+    ["products", query ?? {}] as const,
   product: (productId: string) => ["products", productId] as const,
   orders: (query?: RentalOrderListQuery) => ["orders", query ?? {}] as const,
   order: (orderId: string) => ["orders", orderId] as const,
   invoices: ["invoices"] as const,
   pricelists: ["pricing", "pricelists"] as const,
 };
+
+// -------------------------------------------------------------------------
+// Session
+// -------------------------------------------------------------------------
 
 export const useSessionQuery = () =>
   useQuery({
@@ -32,7 +46,6 @@ export const useSessionQuery = () =>
 
 export const useLoginMutation = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (request: LoginRequest) => api.login(request),
     onSuccess: (session) => {
@@ -43,7 +56,6 @@ export const useLoginMutation = () => {
 
 export const useSignupMutation = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (request: SignupRequest) => api.signup(request),
     onSuccess: (session) => {
@@ -59,7 +71,6 @@ export const useForgotPasswordMutation = () =>
 
 export const useLogoutMutation = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: api.logout,
     onSuccess: () => {
@@ -68,13 +79,62 @@ export const useLogoutMutation = () => {
   });
 };
 
+// -------------------------------------------------------------------------
+// Dashboard
+// -------------------------------------------------------------------------
+
 export const useDashboardSummaryQuery = () =>
   useQuery({
     queryKey: queryKeys.dashboard,
     queryFn: api.getDashboardSummary,
   });
 
-export const useProductsQuery = (query?: ProductListQuery) =>
+// -------------------------------------------------------------------------
+// Categories
+// -------------------------------------------------------------------------
+
+export const useCategoriesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.categories,
+    queryFn: api.getCategories,
+  });
+
+export const useCreateCategoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateCategoryRequest) => api.createCategory(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+    },
+  });
+};
+
+export const useUpdateCategoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: CreateCategoryRequest }) =>
+      api.updateCategory(id, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+    },
+  });
+};
+
+export const useDeleteCategoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+    },
+  });
+};
+
+// -------------------------------------------------------------------------
+// Products
+// -------------------------------------------------------------------------
+
+export const useProductsQuery = (query?: ProductListQuery & { includeInactive?: boolean }) =>
   useQuery({
     queryKey: queryKeys.products(query),
     queryFn: () => api.getProducts(query),
@@ -86,6 +146,47 @@ export const useProductQuery = (productId?: string) =>
     queryKey: queryKeys.product(productId ?? ""),
     queryFn: () => api.getProduct(productId ?? ""),
   });
+
+const useInvalidateProducts = () => {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+  };
+};
+
+export const useCreateProductMutation = () => {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: (request: CreateProductRequest) => api.createProduct(request),
+    onSuccess: invalidate,
+  });
+};
+
+export const useUpdateProductMutation = () => {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: ({ productId, request }: { productId: string; request: UpdateProductRequest }) =>
+      api.updateProduct(productId, request),
+    onSuccess: invalidate,
+  });
+};
+
+export const useDeleteProductMutation = () => {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: (productId: string) => api.deleteProduct(productId),
+    onSuccess: invalidate,
+  });
+};
+
+export const useUploadImageMutation = () =>
+  useMutation({
+    mutationFn: (file: File) => api.uploadImage(file),
+  });
+
+// -------------------------------------------------------------------------
+// Orders
+// -------------------------------------------------------------------------
 
 export const useOrdersQuery = (query?: RentalOrderListQuery) =>
   useQuery({
@@ -102,7 +203,6 @@ export const useOrderQuery = (orderId?: string) =>
 
 const useInvalidateOrders = () => {
   const queryClient = useQueryClient();
-
   return () => {
     queryClient.invalidateQueries({ queryKey: ["orders"] });
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
@@ -111,7 +211,6 @@ const useInvalidateOrders = () => {
 
 export const useCreateOrderMutation = () => {
   const invalidateOrders = useInvalidateOrders();
-
   return useMutation({
     mutationFn: (request: CreateRentalOrderRequest) => api.createOrder(request),
     onSuccess: invalidateOrders,
@@ -120,7 +219,6 @@ export const useCreateOrderMutation = () => {
 
 export const useUpdateOrderStatusMutation = () => {
   const invalidateOrders = useInvalidateOrders();
-
   return useMutation({
     mutationFn: ({
       orderId,
@@ -135,7 +233,6 @@ export const useUpdateOrderStatusMutation = () => {
 
 export const useRecordFulfillmentMutation = () => {
   const invalidateOrders = useInvalidateOrders();
-
   return useMutation({
     mutationFn: ({
       orderId,
@@ -148,6 +245,10 @@ export const useRecordFulfillmentMutation = () => {
   });
 };
 
+// -------------------------------------------------------------------------
+// Invoices / Pricing / Settings / Profile
+// -------------------------------------------------------------------------
+
 export const useInvoicesQuery = () =>
   useQuery({
     queryKey: queryKeys.invoices,
@@ -159,3 +260,25 @@ export const usePricelistsQuery = () =>
     queryKey: queryKeys.pricelists,
     queryFn: api.getPricelists,
   });
+
+export const useSettingsQuery = () =>
+  useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
+
+export const useSettingsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: OrganizationSettings) => api.updateSettings(settings),
+    onSuccess: (settings) => queryClient.setQueryData(["settings"], settings),
+  });
+};
+
+export const useProfileQuery = () =>
+  useQuery({ queryKey: ["profile"], queryFn: api.getProfile });
+
+export const useProfileMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: Pick<UserProfile, "name" | "phone">) => api.updateProfile(profile),
+    onSuccess: (profile) => queryClient.setQueryData(["profile"], profile),
+  });
+};

@@ -6,52 +6,46 @@ import CardContent from "@mui/material/CardContent";
 import Grid from "@mui/material/Grid";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
+import { useSettingsMutation, useSettingsQuery } from "../services/queries";
 
 interface WorkspaceSettings {
   companyName: string;
-  storeName: string;
   timezone: string;
   currency: string;
   taxRate: number;
   depositRefundDays: number;
-  autoLateFees: boolean;
-  emailNotifications: boolean;
+  gracePeriodMinutes: number;
+  lateFeeUnit: string;
+  lateFeeAmount: number;
+  lateFeeMaximum: number | null;
 }
-
-const settingsStorageKey = "assetra.mock.settings";
 
 const defaultSettings: WorkspaceSettings = {
   companyName: "Assetra Rentals",
-  storeName: "Bengaluru Main Store",
   timezone: "Asia/Kolkata",
   currency: "INR",
   taxRate: 18,
   depositRefundDays: 3,
-  autoLateFees: true,
-  emailNotifications: true,
-};
-
-const readSettings = () => {
-  const raw = window.localStorage.getItem(settingsStorageKey);
-  if (!raw) return defaultSettings;
-
-  try {
-    return { ...defaultSettings, ...(JSON.parse(raw) as Partial<WorkspaceSettings>) };
-  } catch {
-    window.localStorage.removeItem(settingsStorageKey);
-    return defaultSettings;
-  }
+  gracePeriodMinutes: 30,
+  lateFeeUnit: "hourly",
+  lateFeeAmount: 250,
+  lateFeeMaximum: 10000,
 };
 
 export function SettingsPage() {
-  const [settings, setSettings] = useState<WorkspaceSettings>(() => readSettings());
+  const settingsQuery = useSettingsQuery();
+  const settingsMutation = useSettingsMutation();
+  const [settings, setSettings] = useState<WorkspaceSettings>(defaultSettings);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (settingsQuery.data?.data) setSettings({ ...defaultSettings, ...settingsQuery.data.data });
+  }, [settingsQuery.data]);
 
   const updateSettings = <K extends keyof WorkspaceSettings>(
     key: K,
@@ -61,21 +55,21 @@ export function SettingsPage() {
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
-  const saveSettings = () => {
-    window.localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
+  const saveSettings = async () => {
+    await settingsMutation.mutateAsync(settings);
     setSaved(true);
   };
 
   return (
     <>
       <PageHeader
-        description="Configure mock account, company, store, and operational defaults."
+        description="Configure organization, tax, deposit, and late-fee defaults."
         title="Settings"
       />
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Workspace settings saved locally.
+          Workspace settings saved to the database.
         </Alert>
       ) : null}
 
@@ -96,16 +90,6 @@ export function SettingsPage() {
                         updateSettings("companyName", event.target.value)
                       }
                       value={settings.companyName}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Store name"
-                      onChange={(event) =>
-                        updateSettings("storeName", event.target.value)
-                      }
-                      value={settings.storeName}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
@@ -171,6 +155,12 @@ export function SettingsPage() {
                       value={settings.depositRefundDays}
                     />
                   </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField fullWidth label="Grace period minutes" onChange={(event) => updateSettings("gracePeriodMinutes", Number(event.target.value))} type="number" value={settings.gracePeriodMinutes} />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField fullWidth label="Late fee per unit" onChange={(event) => updateSettings("lateFeeAmount", Number(event.target.value))} type="number" value={settings.lateFeeAmount} />
+                  </Grid>
                 </Grid>
               </CardContent>
             </Card>
@@ -184,26 +174,10 @@ export function SettingsPage() {
                 Automation
               </Typography>
               <Stack spacing={2}>
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography variant="body2">Auto late fees</Typography>
-                  <Switch
-                    checked={settings.autoLateFees}
-                    onChange={(event) =>
-                      updateSettings("autoLateFees", event.target.checked)
-                    }
-                  />
-                </Stack>
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography variant="body2">Email notifications</Typography>
-                  <Switch
-                    checked={settings.emailNotifications}
-                    onChange={(event) =>
-                      updateSettings("emailNotifications", event.target.checked)
-                    }
-                  />
-                </Stack>
+                <Typography color="text.secondary" variant="body2">Late fees are assessed by the backend after the configured grace period and capped at the configured maximum.</Typography>
                 <Button
-                  onClick={saveSettings}
+                  disabled={settingsMutation.isPending}
+                  onClick={() => void saveSettings()}
                   startIcon={<SaveOutlinedIcon />}
                   variant="contained"
                 >

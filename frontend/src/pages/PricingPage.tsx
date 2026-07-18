@@ -144,7 +144,7 @@ export function PricingPage() {
                               })
                             }
                             type="number"
-                            value={rule.minimumQuantity}
+                            value={Math.max(rule.minimumQuantity, 0)}
                           />
                         </Stack>
                       </CardContent>

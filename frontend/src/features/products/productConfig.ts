@@ -97,13 +97,14 @@ export const useProductConfiguration = (products: Product[]) => {
 
           return existing
             ? current.map((config) =>
-                config.productId === productId ? nextConfig : config,
-              )
+              config.productId === productId ? nextConfig : config,
+            )
             : [...current, nextConfig];
         });
       },
       updatePricing: (rule: PricingConfig) => {
         setPricing((current) => {
+          debugger;
           const exists = current.some((item) => item.id === rule.id);
           return exists
             ? current.map((item) => (item.id === rule.id ? rule : item))
