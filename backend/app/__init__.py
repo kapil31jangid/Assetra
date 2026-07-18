@@ -1,0 +1,1 @@
+"""Assetra backend application package."""

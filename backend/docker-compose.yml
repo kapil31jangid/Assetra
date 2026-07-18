@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: assetra-postgres
+    environment:
+      POSTGRES_DB: assetra
+      POSTGRES_USER: assetra
+      POSTGRES_PASSWORD: assetra
+    ports:
+      - "5432:5432"
+    volumes:
+      - assetra_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assetra -d assetra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  assetra_postgres_data:
