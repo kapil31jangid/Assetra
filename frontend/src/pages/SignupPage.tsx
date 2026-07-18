@@ -5,25 +5,19 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { ROUTES } from "../constants/routes";
 
-export function LoginPage() {
+export function SignupPage() {
   return (
     <Stack spacing={2}>
       <div>
         <Typography component="h1" variant="h1">
-          Sign in
+          Create account
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-          The mock session currently signs in as an admin.
+          Signup routing is ready for the Phase 3 authentication flow.
         </Typography>
       </div>
-      <Button component={RouterLink} to={ROUTES.dashboard} variant="contained">
-        Continue to dashboard
-      </Button>
-      <Button component={RouterLink} to={ROUTES.signup} variant="text">
-        Create account
-      </Button>
-      <Button component={RouterLink} to={ROUTES.forgotPassword} variant="text">
-        Forgot password
+      <Button component={RouterLink} to={ROUTES.login} variant="outlined">
+        Back to sign in
       </Button>
     </Stack>
   );
