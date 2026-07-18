@@ -1,13 +1,22 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.responses import envelope, paginated_envelope
-from app.core.seed_data import ORDERS, PRODUCTS, clone_item, clone_list, inr, new_id, now_iso
+from app.core.database import get_db_session
+from app.core.ids import new_id
+from app.core.security import current_claims, require_roles
+from app.core.seed_data import ORDERS, clone_item, clone_list, inr, now_iso
+from app.modules.catalog.models import Product, ProductVariant
+from app.modules.auth.models import User
+from app.modules.rentals.models import RentalOrder, RentalOrderLine
+from app.modules.rentals.service import order_payload, parse_dt
 from app.modules.rentals.status import RENTAL_ORDER_STATUS_TRANSITIONS
-
 
 router = APIRouter()
 
@@ -31,132 +40,95 @@ class UpdateRentalOrderStatusRequest(BaseModel):
     note: str | None = None
 
 
-def find_order(order_id: str) -> dict[str, Any]:
+def find_legacy_order(order_id: str) -> dict[str, Any]:
     order = next((item for item in ORDERS if item["id"] == order_id), None)
     if order is None:
         raise HTTPException(status_code=404, detail="Rental order could not be found.")
     return order
 
 
-def build_line(request_line: CreateRentalOrderLineRequest) -> dict[str, Any]:
-    product = next((item for item in PRODUCTS if item["id"] == request_line.productId), None)
-    if product is None:
-        raise HTTPException(status_code=400, detail=f"Product {request_line.productId} was not found.")
-
-    variant = next(
-        (item for item in product["variants"] if item["id"] == request_line.variantId),
-        None,
-    )
-    if variant is None:
-        raise HTTPException(status_code=400, detail=f"Variant {request_line.variantId} was not found.")
-
-    unit_price = 2500
-    period_quantity = int(request_line.rentalPeriod.get("quantity", 1))
-    line_total = unit_price * request_line.quantity * period_quantity
-
-    return {
-        "id": new_id("line"),
-        "productId": product["id"],
-        "variantId": variant["id"],
-        "productName": product["name"],
-        "variantName": variant["name"],
-        "sku": variant["sku"],
-        "quantity": request_line.quantity,
-        "rentalPeriod": request_line.rentalPeriod,
-        "unitPrice": inr(unit_price),
-        "lineTotal": inr(line_total),
-        "accessories": clone_list(product.get("accessories", [])),
-    }
-
-
 @router.get("")
-async def list_orders(
-    page: int = 1,
-    pageSize: int = 20,
-    status: list[str] | None = None,
-    customerId: str | None = None,
-    productId: str | None = None,
-) -> dict:
-    orders = clone_list(ORDERS)
-
+async def list_orders(page: int = 1, pageSize: int = 20, status: list[str] | None = None, customerId: str | None = None, productId: str | None = None, db: AsyncSession = Depends(get_db_session), claims: dict = Depends(current_claims)) -> dict:
+    if not isinstance(db, AsyncSession):
+        orders = clone_list(ORDERS)
+        if status:
+            orders = [order for order in orders if order["status"] in set(status)]
+        if customerId:
+            orders = [order for order in orders if order["customer"]["id"] == customerId]
+        if productId:
+            orders = [order for order in orders if any(line["productId"] == productId for line in order["lines"])]
+        return paginated_envelope(orders, page=page, page_size=pageSize)
+    query = select(RentalOrder).options(selectinload(RentalOrder.lines), selectinload(RentalOrder.fulfillment_events), selectinload(RentalOrder.invoices)).order_by(RentalOrder.created_at.desc())
+    if claims.get("role") == "customer":
+        query = query.where(RentalOrder.customer_user_id == claims["sub"])
+    elif customerId:
+        query = query.where(RentalOrder.customer_user_id == customerId)
     if status:
-        statuses = set(status)
-        orders = [order for order in orders if order["status"] in statuses]
-    if customerId:
-        orders = [order for order in orders if order["customer"]["id"] == customerId]
+        query = query.where(RentalOrder.status.in_(status))
     if productId:
-        orders = [
-            order for order in orders if any(line["productId"] == productId for line in order["lines"])
-        ]
-
-    return paginated_envelope(orders, page=page, page_size=pageSize)
+        query = query.join(RentalOrderLine).where(RentalOrderLine.product_id == productId)
+    result = await db.scalars(query)
+    return paginated_envelope([order_payload(order) for order in result.unique().all()], page=page, page_size=pageSize)
 
 
 @router.get("/{order_id}")
-async def get_order(order_id: str) -> dict:
-    return envelope(clone_item(find_order(order_id)))
+async def get_order(order_id: str, db: AsyncSession = Depends(get_db_session), claims: dict = Depends(current_claims)) -> dict:
+    if not isinstance(db, AsyncSession):
+        return envelope(clone_item(find_legacy_order(order_id)))
+    order = await db.scalar(select(RentalOrder).options(selectinload(RentalOrder.lines), selectinload(RentalOrder.fulfillment_events), selectinload(RentalOrder.invoices)).where(RentalOrder.id == order_id))
+    if order is None or (claims.get("role") == "customer" and order.customer_user_id != claims["sub"]):
+        raise HTTPException(status_code=404, detail="Rental order could not be found.")
+    return envelope(order_payload(order))
 
 
-@router.post("")
-async def create_order(request: CreateRentalOrderRequest) -> dict:
-    lines = [build_line(line) for line in request.lines]
-    rental_total = sum(line["lineTotal"]["amount"] for line in lines)
-    deposit_total = sum(
-        next(product for product in PRODUCTS if product["id"] == line["productId"])["depositPolicy"][
-            "amount"
-        ]["amount"]
-        for line in lines
-    )
+@router.post("", dependencies=[Depends(require_roles("admin", "vendor", "customer"))])
+async def create_order(request: CreateRentalOrderRequest, db: AsyncSession = Depends(get_db_session), claims: dict = Depends(current_claims)) -> dict:
+    if not isinstance(db, AsyncSession):
+        raise HTTPException(status_code=503, detail="Persistent database is not configured")
+    customer_id = claims["sub"] if claims.get("role") == "customer" else request.customerId
+    customer = await db.get(User, customer_id)
+    if customer is None or not customer.active:
+        raise HTTPException(status_code=400, detail="Customer account was not found")
+    products = {}
+    lines = []
+    rental_total = 0.0
+    deposit_total = 0.0
+    for request_line in request.lines:
+        product = products.setdefault(request_line.productId, await db.get(Product, request_line.productId))
+        if product is None or not product.active:
+            raise HTTPException(status_code=400, detail=f"Product {request_line.productId} is unavailable")
+        variant = await db.get(ProductVariant, request_line.variantId)
+        if variant is None or variant.product_id != product.id:
+            raise HTTPException(status_code=400, detail=f"Variant {request_line.variantId} was not found")
+        period = request_line.rentalPeriod
+        quantity = int(period.get("quantity", 1))
+        unit_price = 2500.0
+        line_total = unit_price * request_line.quantity * quantity
+        rental_total += line_total
+        deposit_total += float(product.deposit_amount) * request_line.quantity
+        lines.append(RentalOrderLine(id=new_id("line"), product_id=product.id, variant_id=variant.id, product_name=product.name, variant_name=variant.name, sku=variant.sku, quantity=request_line.quantity, rental_starts_at=parse_dt(period["startsAt"]), rental_ends_at=parse_dt(period["endsAt"]), rental_unit=period.get("unit", "daily"), rental_quantity=quantity, rental_timezone=period.get("timezone", "Asia/Kolkata"), unit_price_amount=unit_price, unit_price_currency="INR", line_total_amount=line_total, line_total_currency="INR", accessories_snapshot=product.accessories))
     tax = round(rental_total * 0.18, 2)
-    now = now_iso()
-
-    order = {
-        "id": new_id("ord"),
-        "number": f"RO-{datetime.now(UTC).strftime('%y%m%d')}-{len(ORDERS) + 1:03d}",
-        "customer": {"id": request.customerId, "name": "New Customer", "email": "customer@example.com"},
-        "vendorId": "ven_01",
-        "status": "quotation",
-        "lines": lines,
-        "schedule": request.schedule,
-        "price": {
-            "rental": inr(rental_total),
-            "delivery": inr(0),
-            "discount": inr(0),
-            "deposit": inr(deposit_total),
-            "tax": inr(tax),
-            "total": inr(rental_total + deposit_total + tax),
-        },
-        "deposit": {
-            "required": deposit_total > 0,
-            "amount": inr(deposit_total),
-            "refundable": True,
-            "refundWindowDays": 3,
-        },
-        "depositTransactions": [],
-        "lateFees": [],
-        "damageReports": [],
-        "fulfillmentEvents": [],
-        "invoiceIds": [],
-        "createdAt": now,
-        "updatedAt": now,
-    }
-    ORDERS.append(order)
-
-    return envelope(clone_item(order))
+    order = RentalOrder(id=new_id("ord"), number=f"RO-{datetime.now(UTC).strftime('%y%m%d')}-{int((await db.scalar(select(func.count(RentalOrder.id)))) or 0) + 1:03d}", customer_user_id=customer.id, customer_snapshot={"id": customer.id, "name": customer.name, "email": customer.email}, vendor_id=None, status="quotation", schedule=request.schedule, price={"rental": inr(rental_total), "delivery": inr(0), "discount": inr(0), "deposit": inr(deposit_total), "tax": inr(tax), "total": inr(rental_total + deposit_total + tax)}, deposit={"required": deposit_total > 0, "amount": inr(deposit_total), "refundable": True, "refundWindowDays": 3}, deposit_transactions=[], late_fees=[], damage_reports=[], lines=lines)
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+    return envelope(order_payload(order))
 
 
-@router.post("/{order_id}/status")
-async def update_order_status(order_id: str, request: UpdateRentalOrderStatusRequest) -> dict:
-    order = find_order(order_id)
-    allowed_statuses = RENTAL_ORDER_STATUS_TRANSITIONS.get(order["status"], set())
-
-    if request.status not in allowed_statuses:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Cannot transition order from {order['status']} to {request.status}.",
-        )
-
-    order["status"] = request.status
-    order["updatedAt"] = now_iso()
-
-    return envelope(clone_item(order))
+@router.post("/{order_id}/status", dependencies=[Depends(require_roles("admin", "vendor"))])
+async def update_order_status(order_id: str, request: UpdateRentalOrderStatusRequest, db: AsyncSession = Depends(get_db_session)) -> dict:
+    if not isinstance(db, AsyncSession):
+        order = find_legacy_order(order_id)
+        if request.status not in RENTAL_ORDER_STATUS_TRANSITIONS.get(order["status"], set()):
+            raise HTTPException(status_code=422, detail=f"Cannot transition order from {order['status']} to {request.status}.")
+        order["status"] = request.status
+        order["updatedAt"] = now_iso()
+        return envelope(clone_item(order))
+    order = await db.scalar(select(RentalOrder).options(selectinload(RentalOrder.lines), selectinload(RentalOrder.fulfillment_events), selectinload(RentalOrder.invoices)).where(RentalOrder.id == order_id))
+    if order is None:
+        raise HTTPException(status_code=404, detail="Rental order could not be found.")
+    if request.status not in RENTAL_ORDER_STATUS_TRANSITIONS.get(order.status, set()):
+        raise HTTPException(status_code=422, detail=f"Cannot transition order from {order.status} to {request.status}.")
+    order.status = request.status
+    await db.commit()
+    return envelope(order_payload(order))
