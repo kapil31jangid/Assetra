@@ -262,6 +262,7 @@ export type RentalOrderStatus =
   | "draft"
   | "quotation"
   | "quotation_sent"
+  | "sale_order"
   | "confirmed"
   | "invoiced"
   | "reserved"
@@ -277,6 +278,7 @@ export const RENTAL_ORDER_STATUS_LABELS: Readonly<
   draft: "Draft",
   quotation: "Quotation",
   quotation_sent: "Quotation Sent",
+  sale_order: "Sale Order",
   confirmed: "Confirmed",
   invoiced: "Invoiced",
   reserved: "Reserved",
@@ -291,8 +293,9 @@ export const RENTAL_ORDER_STATUS_TRANSITIONS: Readonly<
   Record<RentalOrderStatus, readonly RentalOrderStatus[]>
 > = {
   draft: ["quotation", "cancelled"],
-  quotation: ["quotation_sent", "confirmed", "cancelled"],
-  quotation_sent: ["confirmed", "cancelled"],
+  quotation: ["quotation_sent", "sale_order", "confirmed", "cancelled"],
+  quotation_sent: ["sale_order", "confirmed", "cancelled"],
+  sale_order: ["invoiced", "reserved", "cancelled"],
   confirmed: ["invoiced", "reserved", "cancelled"],
   invoiced: ["reserved", "cancelled"],
   reserved: ["picked_up", "late_pickup", "cancelled"],
@@ -306,15 +309,19 @@ export const RENTAL_ORDER_STATUS_TRANSITIONS: Readonly<
 export interface RentalOrderLine {
   id: Id;
   productId: Id;
-  variantId: Id;
-  productName: string;
-  variantName: string;
-  sku: string;
+  variantId?: Id;
+  productName?: string;
+  variantName?: string;
+  sku?: string;
   quantity: number;
-  rentalPeriod: RentalPeriod;
+  rentalPeriod?: RentalPeriod;
   unitPrice: Money;
   lineTotal: Money;
-  accessories: Accessory[];
+  accessories?: Accessory[];
+  unit?: string;
+  taxPercent?: number;
+  isNote?: boolean;
+  noteText?: string;
 }
 
 export type FulfillmentMode = "delivery" | "store_pickup";
@@ -382,6 +389,7 @@ export interface LateFee {
 export interface RentalOrder {
   id: Id;
   number: string;
+  ref?: string;
   customer: CustomerSummary;
   vendorId?: Id;
   status: RentalOrderStatus;
@@ -396,6 +404,15 @@ export interface RentalOrder {
   invoiceIds: Id[];
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
+  invoiceAddress?: string;
+  deliveryAddress?: string;
+  rentalStart?: string;
+  rentalEnd?: string;
+  pricelistId?: Id;
+  quotationTemplateId?: Id;
+  untaxedAmount?: number;
+  taxAmount?: number;
+  totalAmount?: number;
 }
 
 export type InvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
