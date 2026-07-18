@@ -21,8 +21,11 @@ import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { PricingPage } from "../pages/PricingPage";
 import { ProductDetailPage } from "../pages/ProductDetailPage";
+import { ProductsPage } from "../pages/ProductsPage";
 import { ProfilePage } from "../pages/ProfilePage";
+import { SchedulePage } from "../pages/SchedulePage";
 import { SignupPage } from "../pages/SignupPage";
 import { WishlistPage } from "../pages/WishlistPage";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -66,33 +69,9 @@ export function AppRouter() {
               }
               path={ROUTES.operationsInvoices}
             />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Product inventory and repair state placeholder."
-                  title="Products"
-                />
-              }
-              path={ROUTES.products}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Pricelists, rules, and rental rates placeholder."
-                  title="Pricing"
-                />
-              }
-              path={ROUTES.pricing}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Pickup and return calendar placeholder."
-                  title="Schedule"
-                />
-              }
-              path={ROUTES.schedule}
-            />
+            <Route element={<ProductsPage />} path={ROUTES.products} />
+            <Route element={<PricingPage />} path={ROUTES.pricing} />
+            <Route element={<SchedulePage />} path={ROUTES.schedule} />
             <Route
               element={
                 <PlaceholderPage
