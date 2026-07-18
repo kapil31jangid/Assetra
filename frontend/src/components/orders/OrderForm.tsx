@@ -15,6 +15,8 @@ import { ROUTES } from "../../constants/routes";
 
 import { PageHeader } from "../PageHeader";
 import { OrderLinesTable } from "./OrderLinesTable";
+import { PickupModal } from "./PickupModal";
+import { ReturnModal } from "./ReturnModal";
 import type { RentalOrder, RentalOrderLine, Product } from "../../types";
 import { formatMoney } from "../../utils/catalog";
 
@@ -45,6 +47,13 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
   const [pricelistId, setPricelistId] = useState(order?.pricelistId || "");
   const [quotationTemplateId, setQuotationTemplateId] = useState(order?.quotationTemplateId || "");
   const [lines, setLines] = useState<RentalOrderLine[]>(order?.lines || []);
+  
+  const [isPickupModalOpen, setIsPickupModalOpen] = useState(false);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  
+  // Track fulfillment state locally for demo purposes if saving doesn't refresh fully
+  const [pickupData, setPickupData] = useState(order?.pickup);
+  const [returnData, setReturnData] = useState(order?.return_data);
 
   const untaxedAmount = lines.reduce((acc, line) => acc + (line.qty * line.unit_price), 0);
   const taxAmount = lines.reduce((acc, line) => acc + ((line.qty * line.unit_price * (line.tax_percent || 0)) / 100), 0);
@@ -66,6 +75,18 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
       taxAmount,
       totalAmount,
     });
+  };
+
+  const handlePickupConfirm = (data: any) => {
+    setPickupData(data);
+    setIsPickupModalOpen(false);
+    onSave({ pickup: data });
+  };
+
+  const handleReturnConfirm = (data: any) => {
+    setReturnData(data);
+    setIsReturnModalOpen(false);
+    onSave({ return_data: data });
   };
 
   return (
@@ -112,7 +133,16 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
                 >
                   Create Invoice
                 </Button>
-                <Button variant="contained" size="small" color="success">Pickup</Button>
+                {!pickupData && (
+                  <Button variant="contained" size="small" color="success" onClick={() => setIsPickupModalOpen(true)}>
+                    Pickup
+                  </Button>
+                )}
+                {pickupData && !returnData && (
+                  <Button variant="contained" size="small" color="secondary" onClick={() => setIsReturnModalOpen(true)}>
+                    Return
+                  </Button>
+                )}
                 <Button size="small">Print</Button>
                 <Button onClick={() => handleAction("cancelled")} color="error" size="small">Cancel Order</Button>
               </>
@@ -121,7 +151,10 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
             <Typography variant="body2" sx={{ alignSelf: "center", fontWeight: "bold" }}>
               {status === "quotation" && "Quotation"}
               {status === "quotation_sent" && "Quotation Sent"}
-              {status === "sale_order" && "Sale Order Confirmed"}
+              {status === "sale_order" && !pickupData && "Sale Order Confirmed"}
+              {status === "sale_order" && pickupData && !returnData && "Picked Up"}
+              {status === "sale_order" && returnData && !returnData.late_fee_applied && "Returned"}
+              {status === "sale_order" && returnData && returnData.late_fee_applied && "Late Return"}
               {status === "cancelled" && "Cancelled"}
             </Typography>
           </Stack>
@@ -236,6 +269,23 @@ export function OrderForm({ order, products, onSave, onCancel }: OrderFormProps)
           </Box>
         </CardContent>
       </Card>
+      
+      {order && (
+        <>
+          <PickupModal 
+            order={{ ...order, lines } as RentalOrder}
+            open={isPickupModalOpen}
+            onClose={() => setIsPickupModalOpen(false)}
+            onConfirm={handlePickupConfirm}
+          />
+          <ReturnModal 
+            order={{ ...order, lines, rentalEnd } as RentalOrder}
+            open={isReturnModalOpen}
+            onClose={() => setIsReturnModalOpen(false)}
+            onConfirm={handleReturnConfirm}
+          />
+        </>
+      )}
     </Box>
   );
 }

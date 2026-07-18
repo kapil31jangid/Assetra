@@ -413,6 +413,20 @@ export interface RentalOrder {
   untaxedAmount?: number;
   taxAmount?: number;
   totalAmount?: number;
+  pickup?: {
+    confirmed_at: string;
+    checklist: Record<string, boolean>;
+    notes?: string;
+  };
+  return_data?: {
+    confirmed_at?: string;
+    actual_return_at: string;
+    product_conditions: Array<{ product_id: string; condition: "Good" | "Damaged" | "Missing"; notes?: string }>;
+    late_fee_applied: boolean;
+    late_fee_amount: number;
+    deposit_refund_amount: number;
+    additional_due: number;
+  };
 }
 
 export type InvoiceStatus = "draft" | "posted" | "cancelled";
