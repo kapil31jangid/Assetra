@@ -189,26 +189,36 @@ export interface AvailabilityWindow {
   status: ProductAvailabilityStatus;
 }
 
+export interface ProductAttributeReference {
+  attributeId: Id;
+  valueIds: Id[];
+}
+
+export interface RentalSettings {
+  periodicity: "hours" | "day" | "week" | "monthly";
+  pickupTime?: string; // e.g. "10:00"
+  returnTime?: string; // e.g. "19:00"
+  lateFee?: number;
+  gracePeriod?: string; // e.g. "2:00"
+}
+
+export interface ProductDeposit {
+  required: boolean;
+  amount?: number;
+}
+
 export interface Product {
   id: Id;
   name: string;
-  slug: string;
-  description?: string;
-  category: ProductCategory;
-  brand?: string;
-  colors?: string[];
-  tags: string[];
-  imageUrls: string[];
-  attributes: ProductAttribute[];
-  variants: ProductVariant[];
-  accessories: Accessory[];
-  depositPolicy: DepositPolicy;
-  repairStatus: ProductRepairStatus;
-  stock: StockSummary;
-  availabilityStatus: ProductAvailabilityStatus;
-  availability?: AvailabilityWindow[];
-  rentalUnits: RentalPeriodUnit[];
-  active: boolean;
+  image?: string;
+  type: "goods" | "service";
+  qtyOnHand?: number;
+  salesPrice: number;
+  costPrice: number;
+  published: boolean;
+  attributes: ProductAttributeReference[];
+  rentalSettings: RentalSettings;
+  deposit: ProductDeposit;
 }
 
 export type PricingRuleKind = "fixed_price" | "discount";

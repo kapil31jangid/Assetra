@@ -63,45 +63,22 @@ export interface Category {
   slug: string;
 }
 
+import type { ProductAttributeReference, RentalSettings, ProductDeposit } from "../types/domain";
+
 export interface CreateProductRequest {
-  categoryId: string;
   name: string;
-  slug: string;
-  description?: string;
-  brand?: string;
-  imageUrls?: string[];
-  tags?: string[];
-  colors?: string[];
-  rentalUnits?: string[];
-  depositAmount?: number;
-  depositRequired?: boolean;
-  depositRefundable?: boolean;
-  depositRefundWindowDays?: number;
-  variants?: Array<{
-    name: string;
-    sku: string;
-    stockTotal: number;
-    imageUrl?: string;
-  }>;
+  image?: string;
+  type: "goods" | "service";
+  qtyOnHand?: number;
+  salesPrice: number;
+  costPrice: number;
+  published: boolean;
+  attributes: ProductAttributeReference[];
+  rentalSettings: RentalSettings;
+  deposit: ProductDeposit;
 }
 
-export interface UpdateProductRequest {
-  categoryId?: string;
-  name?: string;
-  description?: string;
-  brand?: string;
-  imageUrls?: string[];
-  tags?: string[];
-  colors?: string[];
-  rentalUnits?: string[];
-  depositAmount?: number;
-  depositRequired?: boolean;
-  depositRefundable?: boolean;
-  depositRefundWindowDays?: number;
-  active?: boolean;
-  repairStatus?: string;
-  availabilityStatus?: string;
-}
+export type UpdateProductRequest = Partial<CreateProductRequest>;
 
 export interface CreateCategoryRequest {
   name: string;
