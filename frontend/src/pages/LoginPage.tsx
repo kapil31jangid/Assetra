@@ -76,9 +76,7 @@ export function LoginPage() {
 
       {login.isError ? (
         <Alert severity="error">
-          {login.error instanceof Error
-            ? login.error.message
-            : "Unable to sign in. Check the details and try again."}
+          Invalid User ID or Password.
         </Alert>
       ) : null}
 
@@ -88,7 +86,7 @@ export function LoginPage() {
         error={Boolean(errors.email)}
         fullWidth
         helperText={errors.email?.message}
-        label="Email"
+        label="Login ID"
         type="email"
         {...register("email")}
       />
@@ -104,7 +102,7 @@ export function LoginPage() {
 
       <Button disabled={login.isPending} type="submit" variant="contained">
         {login.isPending ? <CircularProgress color="inherit" size={20} /> : null}
-        Sign in
+        Log In
       </Button>
 
       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
@@ -124,18 +122,18 @@ export function LoginPage() {
       </Stack>
 
       <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1}
+        direction="column"
+        spacing={2}
         sx={{
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
+          alignItems: "center",
+          mt: 2
         }}
       >
-        <Link component={RouterLink} to={ROUTES.signup} variant="body2">
-          Create account
-        </Link>
         <Link component={RouterLink} to={ROUTES.forgotPassword} variant="body2">
-          Forgot password?
+          Forgot Password?
+        </Link>
+        <Link component={RouterLink} to={ROUTES.signup} variant="body2">
+          Do not have an account? Register Here
         </Link>
       </Stack>
     </Stack>
