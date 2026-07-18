@@ -7,3 +7,5 @@ backend/.env
 backend/.venv/
 backend/**/__pycache__/
 backend/.pytest_cache/
+backend/assetra_backend.egg-info/
+backend/uploads/
