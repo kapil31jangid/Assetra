@@ -7,6 +7,7 @@ import type {
   Product,
   RentalOrder,
   RentalOrderStatus,
+  Role,
   Session,
 } from "../types";
 import type { Id, RentalPeriod } from "../types";
@@ -96,6 +97,23 @@ export interface RecordFulfillmentRequest {
   photos?: string[];
 }
 
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  companyName?: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
 export interface ApiContract {
   session: {
     current: {
@@ -107,6 +125,24 @@ export interface ApiContract {
       method: "POST";
       path: "/api/v1/session/logout";
       response: ApiResponse<null>;
+    };
+    login: {
+      method: "POST";
+      path: "/api/v1/session/login";
+      body: LoginRequest;
+      response: ApiResponse<Session>;
+    };
+    signup: {
+      method: "POST";
+      path: "/api/v1/session/signup";
+      body: SignupRequest;
+      response: ApiResponse<Session>;
+    };
+    forgotPassword: {
+      method: "POST";
+      path: "/api/v1/session/forgot-password";
+      body: ForgotPasswordRequest;
+      response: ApiResponse<{ message: string }>;
     };
   };
   products: {

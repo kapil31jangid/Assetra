@@ -28,11 +28,16 @@ import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState, type MouseEvent } from "react";
-import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import logoUrl from "../assets/OnlyLogo.png";
 import { ROUTES } from "../constants/routes";
-import { useSessionQuery } from "../services/queries";
+import { useLogoutMutation, useSessionQuery } from "../services/queries";
 
 const drawerWidth = 264;
 
@@ -74,7 +79,9 @@ const operationsNavItems = [
 
 export function OperationsLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const session = useSessionQuery();
+  const logout = useLogoutMutation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
     null,
@@ -85,6 +92,12 @@ export function OperationsLayout() {
   const openUserMenu = (event: MouseEvent<HTMLElement>) =>
     setUserMenuAnchor(event.currentTarget);
   const closeUserMenu = () => setUserMenuAnchor(null);
+  const handleLogout = () => {
+    closeUserMenu();
+    logout.mutate(undefined, {
+      onSuccess: () => navigate(ROUTES.login, { replace: true }),
+    });
+  };
 
   const drawer = (
     <Box sx={{ height: "100%" }}>
@@ -200,7 +213,9 @@ export function OperationsLayout() {
           >
             <MenuItem disabled>{user?.email ?? "admin@assetra.local"}</MenuItem>
             <MenuItem onClick={closeUserMenu}>Profile</MenuItem>
-            <MenuItem onClick={closeUserMenu}>Logout</MenuItem>
+            <MenuItem disabled={logout.isPending} onClick={handleLogout}>
+              Logout
+            </MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>

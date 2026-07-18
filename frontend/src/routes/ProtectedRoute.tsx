@@ -4,6 +4,7 @@ import { LoadingState } from "../components/LoadingState";
 import { ROUTES } from "../constants/routes";
 import { useSessionQuery } from "../services/queries";
 import type { Role } from "../types";
+import { getRoleHomeRoute } from "../utils/auth";
 
 interface ProtectedRouteProps {
   allowedRoles?: Role[];
@@ -22,7 +23,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && !allowedRoles.includes(session.data.data.user.role)) {
-    return <Navigate replace to={ROUTES.dashboard} />;
+    return <Navigate replace to={getRoleHomeRoute(session.data.data.user.role)} />;
   }
 
   return <Outlet />;

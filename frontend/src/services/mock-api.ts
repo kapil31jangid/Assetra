@@ -1,9 +1,12 @@
 import type {
   ApiResponse,
+  ForgotPasswordRequest,
   ListQuery,
+  LoginRequest,
   PaginatedResponse,
   ProductListQuery,
   RentalOrderListQuery,
+  SignupRequest,
 } from "./api-contract";
 import {
   mockDashboard,
@@ -11,7 +14,7 @@ import {
   mockOrders,
   mockPricelists,
   mockProducts,
-  mockSession,
+  mockUsers,
 } from "./mock-data";
 import type {
   DashboardSummary,
@@ -20,9 +23,11 @@ import type {
   Product,
   RentalOrder,
   Session,
+  UserSummary,
 } from "../types";
 
 const wait = () => new Promise((resolve) => window.setTimeout(resolve, 180));
+const sessionStorageKey = "assetra.mock.session";
 
 const meta = () => ({
   requestId: `mock_${crypto.randomUUID()}`,
@@ -30,6 +35,33 @@ const meta = () => ({
 });
 
 const envelope = <T>(data: T): ApiResponse<T> => ({ data, meta: meta() });
+
+const buildSession = (user: UserSummary): Session => ({
+  user,
+  expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString(),
+});
+
+const readStoredSession = (): Session | null => {
+  const raw = window.localStorage.getItem(sessionStorageKey);
+  if (!raw) return null;
+
+  try {
+    const session = JSON.parse(raw) as Session;
+    return new Date(session.expiresAt).getTime() > Date.now() ? session : null;
+  } catch {
+    window.localStorage.removeItem(sessionStorageKey);
+    return null;
+  }
+};
+
+const persistSession = (session: Session) => {
+  window.localStorage.setItem(sessionStorageKey, JSON.stringify(session));
+};
+
+const findMockUser = (email: string) =>
+  Object.values(mockUsers).find(
+    (user) => user.email.toLowerCase() === email.trim().toLowerCase(),
+  );
 
 const paginate = <T>(
   items: T[],
@@ -55,7 +87,63 @@ const paginate = <T>(
 export const mockApi = {
   async getSession(): Promise<ApiResponse<Session>> {
     await wait();
-    return envelope(mockSession);
+    const session = readStoredSession();
+
+    if (!session) {
+      throw new Error("No active session");
+    }
+
+    return envelope(session);
+  },
+
+  async login(request: LoginRequest): Promise<ApiResponse<Session>> {
+    await wait();
+
+    if (request.password.length < 6) {
+      throw new Error("Use any password with at least 6 characters.");
+    }
+
+    const user = findMockUser(request.email);
+
+    if (!user) {
+      throw new Error(
+        "Use admin@assetra.local, vendor@assetra.local, or nisha@example.com.",
+      );
+    }
+
+    const session = buildSession(user);
+    persistSession(session);
+
+    return envelope(session);
+  },
+
+  async signup(request: SignupRequest): Promise<ApiResponse<Session>> {
+    await wait();
+
+    const session = buildSession({
+      id: `usr_${crypto.randomUUID()}`,
+      name: request.name,
+      email: request.email,
+      role: request.role,
+    });
+    persistSession(session);
+
+    return envelope(session);
+  },
+
+  async forgotPassword(
+    request: ForgotPasswordRequest,
+  ): Promise<ApiResponse<{ message: string }>> {
+    await wait();
+    return envelope({
+      message: `Password reset instructions were sent to ${request.email}.`,
+    });
+  },
+
+  async logout(): Promise<ApiResponse<null>> {
+    await wait();
+    window.localStorage.removeItem(sessionStorageKey);
+    return envelope(null);
   },
 
   async getProducts(

@@ -1,6 +1,7 @@
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import SearchIcon from "@mui/icons-material/Search";
@@ -21,10 +22,16 @@ import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
-import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import logoUrl from "../assets/OnlyLogo.png";
 import { ROUTES } from "../constants/routes";
+import { useLogoutMutation } from "../services/queries";
 
 const portalNavItems = [
   { label: "Catalog", to: ROUTES.catalog, icon: <Inventory2OutlinedIcon /> },
@@ -52,9 +59,16 @@ const portalNavItems = [
 
 export function CustomerPortalLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useLogoutMutation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const closeDrawer = () => setMobileOpen(false);
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => navigate(ROUTES.login, { replace: true }),
+    });
+  };
 
   const navList = (
     <List dense sx={{ minWidth: 260, px: 1, py: 2 }}>
@@ -137,6 +151,11 @@ export function CustomerPortalLayout() {
           <Tooltip title="Profile">
             <IconButton component={RouterLink} to={ROUTES.profile}>
               <AccountCircleOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Logout">
+            <IconButton disabled={logout.isPending} onClick={handleLogout}>
+              <LogoutOutlinedIcon />
             </IconButton>
           </Tooltip>
         </Toolbar>

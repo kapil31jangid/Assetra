@@ -3,10 +3,13 @@ import type { AxiosResponse } from "axios";
 import { apiClient } from "./api-client";
 import type {
   ApiResponse,
+  ForgotPasswordRequest,
   ListQuery,
+  LoginRequest,
   PaginatedResponse,
   ProductListQuery,
   RentalOrderListQuery,
+  SignupRequest,
 } from "./api-contract";
 import { envConfig } from "./config";
 import { mockApi } from "./mock-api";
@@ -25,6 +28,39 @@ export const api = {
   async getSession(): Promise<ApiResponse<Session>> {
     if (envConfig.useMockApi) return mockApi.getSession();
     return apiClient.get<ApiResponse<Session>>("/session").then(responseData);
+  },
+
+  async login(request: LoginRequest): Promise<ApiResponse<Session>> {
+    if (envConfig.useMockApi) return mockApi.login(request);
+    return apiClient
+      .post<ApiResponse<Session>>("/session/login", request)
+      .then(responseData);
+  },
+
+  async signup(request: SignupRequest): Promise<ApiResponse<Session>> {
+    if (envConfig.useMockApi) return mockApi.signup(request);
+    return apiClient
+      .post<ApiResponse<Session>>("/session/signup", request)
+      .then(responseData);
+  },
+
+  async forgotPassword(
+    request: ForgotPasswordRequest,
+  ): Promise<ApiResponse<{ message: string }>> {
+    if (envConfig.useMockApi) return mockApi.forgotPassword(request);
+    return apiClient
+      .post<ApiResponse<{ message: string }>>(
+        "/session/forgot-password",
+        request,
+      )
+      .then(responseData);
+  },
+
+  async logout(): Promise<ApiResponse<null>> {
+    if (envConfig.useMockApi) return mockApi.logout();
+    return apiClient
+      .post<ApiResponse<null>>("/session/logout")
+      .then(responseData);
   },
 
   async getProducts(

@@ -24,6 +24,12 @@ export const mockUsers: Record<string, UserSummary> = {
     email: "nisha@example.com",
     role: "customer",
   },
+  vendor: {
+    id: "usr_vendor",
+    name: "Kabir Sethi",
+    email: "vendor@assetra.local",
+    role: "vendor",
+  },
 };
 
 export const mockSession: Session = {
