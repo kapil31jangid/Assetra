@@ -7,7 +7,8 @@ import Grid from "@mui/material/Grid";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -19,25 +20,42 @@ import { useOrdersQuery, useProductsQuery, useCreateOrderMutation } from "../ser
 import type { RentalOrder } from "../types";
 
 export function OrdersPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "Today" | "Pickup" | "Return" | "Late">("All");
   
   const [editingOrder, setEditingOrder] = useState<RentalOrder | "new" | null>(null);
-
+  
   const ordersQuery = useOrdersQuery({ pageSize: 100 });
   const productsQuery = useProductsQuery({ pageSize: 100 });
   const createOrder = useCreateOrderMutation();
 
+  useEffect(() => {
+    if (ordersQuery.isSuccess && !editingOrder) {
+      const orderId = searchParams.get("id");
+      const isNew = searchParams.get("new");
+      
+      if (orderId) {
+        const order = ordersQuery.data?.data.find(o => o.id === orderId);
+        if (order) {
+          setEditingOrder(order);
+        }
+      } else if (isNew) {
+        setEditingOrder("new");
+      }
+    }
+  }, [searchParams, ordersQuery.isSuccess]);
+
   const handleSave = (orderData: Partial<RentalOrder>) => {
     // Basic mock save implementation
     if (editingOrder === "new") {
-      // Use create mutation if needed, but for now we just log or optimistic update
       console.log("Saving new order", orderData);
     } else {
       console.log("Updating order", orderData);
     }
     setEditingOrder(null);
+    setSearchParams({});
   };
 
   if (ordersQuery.isLoading || productsQuery.isLoading) {
@@ -50,8 +68,6 @@ export function OrdersPage() {
 
   const allOrders = ordersQuery.data?.data || [];
   
-  // Basic filtering for tabs (Today/Pickup/Return/Late)
-  // To keep it simple in this mock: we filter based on stages roughly, though stages are also used in Kanban.
   let filteredOrders = allOrders;
   if (search) {
     filteredOrders = filteredOrders.filter(
@@ -60,15 +76,22 @@ export function OrdersPage() {
              o.customer?.name.toLowerCase().includes(search.toLowerCase())
     );
   }
-  // Optional: add actual stage filtering if activeFilter !== "All"
 
   if (editingOrder !== null) {
+    // When creating new from scheduler, pass the default rentalStart
+    const newOrderProps = editingOrder === "new" ? {
+      rentalStart: searchParams.get("rentalStart") || "",
+    } : undefined;
+
     return (
       <OrderForm
-        order={editingOrder === "new" ? undefined : editingOrder}
+        order={editingOrder === "new" ? newOrderProps as RentalOrder : editingOrder}
         products={productsQuery.data?.data || []}
         onSave={handleSave}
-        onCancel={() => setEditingOrder(null)}
+        onCancel={() => {
+          setEditingOrder(null);
+          setSearchParams({});
+        }}
       />
     );
   }
