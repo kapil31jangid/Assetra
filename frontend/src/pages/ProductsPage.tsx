@@ -9,6 +9,7 @@ import { AttributeManager } from "../components/attributes/AttributeManager";
 import { ProductList } from "../components/products/ProductList";
 
 import { PricelistList } from "../components/pricelists/PricelistList";
+import { QuotationTemplateList } from "../components/quotation-templates/QuotationTemplateList";
 
 export function ProductsPage() {
   const [tab, setTab] = useState(0);
@@ -21,11 +22,12 @@ export function ProductsPage() {
       />
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-        <Tabs onChange={(_, v) => setTab(v)} value={tab}>
+        <Tabs onChange={(_, v) => setTab(v)} value={tab} variant="scrollable">
           <Tab label="Products" />
           <Tab label="Categories" />
           <Tab label="Attributes" />
           <Tab label="Pricelists" />
+          <Tab label="Quotation Templates" />
         </Tabs>
       </Box>
 
@@ -33,6 +35,7 @@ export function ProductsPage() {
       {tab === 1 && <CategoryManager />}
       {tab === 2 && <AttributeManager />}
       {tab === 3 && <PricelistList />}
+      {tab === 4 && <QuotationTemplateList />}
     </>
   );
 }

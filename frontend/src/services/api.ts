@@ -23,6 +23,7 @@ import type {
   ProductAttribute,
   RentalOrder,
   Session,
+  QuotationTemplate,
 } from "../types";
 
 export interface OrganizationSettings {
@@ -92,6 +93,19 @@ export interface CreatePricelistRequest {
 }
 
 export type UpdatePricelistRequest = Partial<CreatePricelistRequest>;
+
+import type { QuotationTemplateLine } from "../types/domain";
+
+export interface CreateQuotationTemplateRequest {
+  name: string;
+  validityDays: number;
+  paymentTermsPercent: number;
+  lines: QuotationTemplateLine[];
+  header?: string;
+  footer?: string;
+}
+
+export type UpdateQuotationTemplateRequest = Partial<CreateQuotationTemplateRequest>;
 
 const responseData = <T>(response: AxiosResponse<T>) => response.data;
 const persistSession = <T extends ApiResponse<Session>>(response: T) => {
@@ -301,6 +315,36 @@ export const api = {
   async deletePricelist(id: string): Promise<ApiResponse<void>> {
     return apiClient
       .delete<ApiResponse<void>>(`/pricelists/${id}`)
+      .then(responseData);
+  },
+
+  async getQuotationTemplates(): Promise<ApiResponse<QuotationTemplate[]>> {
+    return apiClient
+      .get<ApiResponse<QuotationTemplate[]>>("/quotation-templates")
+      .then(responseData);
+  },
+
+  async getQuotationTemplate(id: string): Promise<ApiResponse<QuotationTemplate>> {
+    return apiClient
+      .get<ApiResponse<QuotationTemplate>>(`/quotation-templates/${id}`)
+      .then(responseData);
+  },
+
+  async createQuotationTemplate(request: CreateQuotationTemplateRequest): Promise<ApiResponse<QuotationTemplate>> {
+    return apiClient
+      .post<ApiResponse<QuotationTemplate>>("/quotation-templates", request)
+      .then(responseData);
+  },
+
+  async updateQuotationTemplate(id: string, request: UpdateQuotationTemplateRequest): Promise<ApiResponse<QuotationTemplate>> {
+    return apiClient
+      .put<ApiResponse<QuotationTemplate>>(`/quotation-templates/${id}`, request)
+      .then(responseData);
+  },
+
+  async deleteQuotationTemplate(id: string): Promise<ApiResponse<void>> {
+    return apiClient
+      .delete<ApiResponse<void>>(`/quotation-templates/${id}`)
       .then(responseData);
   },
 

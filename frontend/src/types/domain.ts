@@ -446,3 +446,19 @@ export interface DashboardSummary {
   upcomingPickups: RentalOrder[];
   upcomingReturns: RentalOrder[];
 }
+
+export interface QuotationTemplateLine {
+  productId: Id;
+  quantity: number;
+  unit: string;
+}
+
+export interface QuotationTemplate {
+  id: Id;
+  name: string;
+  validityDays: number;
+  paymentTermsPercent: number;
+  lines: QuotationTemplateLine[];
+  header?: string;
+  footer?: string;
+}

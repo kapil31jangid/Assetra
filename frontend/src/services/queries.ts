@@ -7,6 +7,9 @@ import {
   type CreateProductRequest,
   type CreatePricelistRequest,
   type UpdatePricelistRequest,
+  type QuotationTemplate,
+  type CreateQuotationTemplateRequest,
+  type UpdateQuotationTemplateRequest,
   type OrganizationSettings,
   type Pricelist,
   type Product,
@@ -39,6 +42,7 @@ export const queryKeys = {
   order: (orderId: string) => ["orders", orderId] as const,
   invoices: ["invoices"] as const,
   pricelists: ["pricing", "pricelists"] as const,
+  quotationTemplates: ["pricing", "quotation-templates"] as const,
 };
 
 // -------------------------------------------------------------------------
@@ -330,6 +334,42 @@ export const useDeletePricelistMutation = () => {
   return useMutation({
     mutationFn: (id: string) => api.deletePricelist(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pricelists }),
+  });
+export const useQuotationTemplatesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.quotationTemplates,
+    queryFn: api.getQuotationTemplates,
+  });
+
+export const useQuotationTemplateQuery = (id?: string) =>
+  useQuery({
+    queryKey: ["pricing", "quotation-templates", id],
+    queryFn: () => api.getQuotationTemplate(id!),
+    enabled: !!id,
+  });
+
+export const useCreateQuotationTemplateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateQuotationTemplateRequest) => api.createQuotationTemplate(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.quotationTemplates }),
+  });
+};
+
+export const useUpdateQuotationTemplateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: UpdateQuotationTemplateRequest }) =>
+      api.updateQuotationTemplate(id, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.quotationTemplates }),
+  });
+};
+
+export const useDeleteQuotationTemplateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteQuotationTemplate(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.quotationTemplates }),
   });
 };
 
