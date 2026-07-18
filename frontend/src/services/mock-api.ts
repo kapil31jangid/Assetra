@@ -1,12 +1,15 @@
 import type {
   ApiResponse,
+  CreateRentalOrderRequest,
   ForgotPasswordRequest,
   ListQuery,
   LoginRequest,
   PaginatedResponse,
   ProductListQuery,
+  RecordFulfillmentRequest,
   RentalOrderListQuery,
   SignupRequest,
+  UpdateRentalOrderStatusRequest,
 } from "./api-contract";
 import {
   mockDashboard,
@@ -25,10 +28,12 @@ import type {
   Session,
   UserSummary,
 } from "../types";
+import { RENTAL_ORDER_STATUS_TRANSITIONS } from "../types";
 import { getProductDailyRate } from "../utils/catalog";
 
 const wait = () => new Promise((resolve) => window.setTimeout(resolve, 180));
 const sessionStorageKey = "assetra.mock.session";
+const ordersStorageKey = "assetra.mock.operations.orders";
 
 const meta = () => ({
   requestId: `mock_${crypto.randomUUID()}`,
@@ -63,6 +68,37 @@ const findMockUser = (email: string) =>
   Object.values(mockUsers).find(
     (user) => user.email.toLowerCase() === email.trim().toLowerCase(),
   );
+
+const readOrders = (): RentalOrder[] => {
+  const raw = window.localStorage.getItem(ordersStorageKey);
+  if (!raw) return mockOrders;
+
+  try {
+    return JSON.parse(raw) as RentalOrder[];
+  } catch {
+    window.localStorage.removeItem(ordersStorageKey);
+    return mockOrders;
+  }
+};
+
+const writeOrders = (orders: RentalOrder[]) => {
+  window.localStorage.setItem(ordersStorageKey, JSON.stringify(orders));
+};
+
+const updateOrder = (
+  orderId: string,
+  updater: (order: RentalOrder) => RentalOrder,
+) => {
+  const orders = readOrders();
+  const next = orders.map((order) =>
+    order.id === orderId ? updater(order) : order,
+  );
+  writeOrders(next);
+  const updated = next.find((order) => order.id === orderId);
+
+  if (!updated) throw new Error("Rental order could not be found.");
+  return updated;
+};
 
 const paginate = <T>(
   items: T[],
@@ -216,11 +252,220 @@ export const mockApi = {
       : query?.status
         ? [query.status]
         : [];
-    const items = statuses.length
-      ? mockOrders.filter((order) => statuses.includes(order.status))
-      : mockOrders;
+    const search = query?.search?.toLowerCase();
+    const orders = readOrders();
+    const items = orders.filter((order) => {
+      const matchesStatus = statuses.length
+        ? statuses.includes(order.status)
+        : true;
+      const matchesSearch = search
+        ? [
+            order.number,
+            order.customer.name,
+            order.customer.email,
+            ...order.lines.map((line) => line.productName),
+          ].some((value) => value.toLowerCase().includes(search))
+        : true;
+      const matchesCustomer = query?.customerId
+        ? order.customer.id === query.customerId
+        : true;
+      const matchesProduct = query?.productId
+        ? order.lines.some((line) => line.productId === query.productId)
+        : true;
+
+      return (
+        matchesStatus && matchesSearch && matchesCustomer && matchesProduct
+      );
+    });
 
     return paginate(items, query);
+  },
+
+  async getOrder(orderId: string): Promise<ApiResponse<RentalOrder>> {
+    await wait();
+    const order = readOrders().find((item) => item.id === orderId);
+    if (!order) throw new Error("Rental order could not be found.");
+    return envelope(order);
+  },
+
+  async createOrder(
+    request: CreateRentalOrderRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    await wait();
+    const firstLine = request.lines[0];
+    const product = mockProducts.find((item) => item.id === firstLine.productId);
+    const variant = product?.variants.find(
+      (item) => item.id === firstLine.variantId,
+    );
+    const unitPrice = product ? getProductDailyRate(product) : { amount: 0, currency: "INR" as const };
+    const rentalAmount =
+      unitPrice.amount * firstLine.quantity * firstLine.rentalPeriod.quantity;
+    const depositAmount = product?.depositPolicy.amount.amount ?? 0;
+    const now = new Date().toISOString();
+    const order: RentalOrder = {
+      id: `ord_${crypto.randomUUID()}`,
+      number: `RO-${Date.now().toString().slice(-5)}`,
+      customer: {
+        id: request.customerId,
+        name: "Walk-in Customer",
+        email: "customer@example.com",
+      },
+      vendorId: "ven_01",
+      status: "quotation",
+      lines: [
+        {
+          id: `line_${crypto.randomUUID()}`,
+          productId: firstLine.productId,
+          variantId: firstLine.variantId,
+          productName: product?.name ?? "Rental product",
+          variantName: variant?.name ?? "Default",
+          sku: variant?.sku ?? "NEW-SKU",
+          quantity: firstLine.quantity,
+          rentalPeriod: firstLine.rentalPeriod,
+          unitPrice,
+          lineTotal: { ...unitPrice, amount: rentalAmount },
+          accessories: product?.accessories ?? [],
+        },
+      ],
+      schedule: request.schedule,
+      price: {
+        rental: { ...unitPrice, amount: rentalAmount },
+        delivery: { ...unitPrice, amount: 0 },
+        discount: { ...unitPrice, amount: 0 },
+        deposit: { ...unitPrice, amount: depositAmount },
+        tax: { ...unitPrice, amount: Math.round(rentalAmount * 0.18) },
+        total: {
+          ...unitPrice,
+          amount: rentalAmount + depositAmount + Math.round(rentalAmount * 0.18),
+        },
+      },
+      deposit: product?.depositPolicy ?? {
+        required: false,
+        amount: { amount: 0, currency: "INR" },
+        refundable: true,
+      },
+      depositTransactions: [],
+      lateFees: [],
+      damageReports: [],
+      fulfillmentEvents: [],
+      invoiceIds: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    writeOrders([order, ...readOrders()]);
+    return envelope(order);
+  },
+
+  async updateOrderStatus(
+    orderId: string,
+    request: UpdateRentalOrderStatusRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    await wait();
+    const order = updateOrder(orderId, (current) => {
+      const allowed = RENTAL_ORDER_STATUS_TRANSITIONS[current.status];
+      if (!allowed.includes(request.status) && current.status !== request.status) {
+        throw new Error("This status transition is not allowed.");
+      }
+
+      return {
+        ...current,
+        status: request.status,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    return envelope(order);
+  },
+
+  async recordFulfillment(
+    orderId: string,
+    request: RecordFulfillmentRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    await wait();
+    const session = readStoredSession();
+    const occurredAt = request.occurredAt || new Date().toISOString();
+    const order = updateOrder(orderId, (current) => {
+      const isPickup = request.type === "pickup";
+      const scheduledAt = isPickup
+        ? current.schedule.scheduledPickupAt
+        : current.schedule.scheduledReturnAt;
+      const minutesLate = Math.max(
+        0,
+        Math.round(
+          (new Date(occurredAt).getTime() - new Date(scheduledAt).getTime()) /
+            60000 -
+            current.schedule.gracePeriodMinutes,
+        ),
+      );
+      const lateFee =
+        minutesLate > 0
+          ? {
+              id: `late_${crypto.randomUUID()}`,
+              reason: isPickup ? "late_pickup" as const : "late_return" as const,
+              minutesLate,
+              amount: {
+                ...current.price.rental,
+                amount: Math.ceil(minutesLate / 60) * 250,
+              },
+              calculatedAt: occurredAt,
+              waived: false,
+            }
+          : null;
+      const damagedItems = request.checklist.filter(
+        (item) => item.condition === "damaged" || item.condition === "missing",
+      );
+      const damageReports = damagedItems.map((item) => ({
+        id: `damage_${crypto.randomUUID()}`,
+        productId: current.lines[0]?.productId ?? "unknown",
+        description: `${item.label}: ${item.condition}`,
+        amount: { ...current.price.rental, amount: 500 },
+        reportedAt: occurredAt,
+        resolved: false,
+      }));
+
+      return {
+        ...current,
+        status: isPickup ? "picked_up" : "returned",
+        schedule: {
+          ...current.schedule,
+          actualPickupAt: isPickup ? occurredAt : current.schedule.actualPickupAt,
+          actualReturnAt: isPickup ? current.schedule.actualReturnAt : occurredAt,
+        },
+        lateFees: lateFee ? [...current.lateFees, lateFee] : current.lateFees,
+        damageReports: [...current.damageReports, ...damageReports],
+        depositTransactions: [
+          ...current.depositTransactions,
+          {
+            id: `dep_${crypto.randomUUID()}`,
+            type: isPickup ? "hold" : damageReports.length ? "penalty" : "refund",
+            amount: isPickup
+              ? current.deposit.amount
+              : damageReports.length
+                ? { ...current.deposit.amount, amount: damageReports.length * 500 }
+                : current.deposit.amount,
+            occurredAt,
+            reason: isPickup
+              ? "Security deposit hold"
+              : damageReports.length
+                ? "Damage or missing accessory penalty"
+                : "Security deposit refund ready",
+          },
+        ],
+        fulfillmentEvents: [
+          ...current.fulfillmentEvents,
+          {
+            id: `ful_${crypto.randomUUID()}`,
+            type: request.type,
+            occurredAt,
+            recordedBy: session?.user ?? mockUsers.admin,
+            checklist: request.checklist,
+            notes: request.notes,
+            photos: request.photos,
+          },
+        ],
+        updatedAt: occurredAt,
+      };
+    });
+    return envelope(order);
   },
 
   async getInvoices(query?: ListQuery): Promise<PaginatedResponse<Invoice>> {
@@ -235,6 +480,24 @@ export const mockApi = {
 
   async getDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {
     await wait();
-    return envelope(mockDashboard);
+    const orders = readOrders();
+    const orderStatusCounts = orders.reduce<DashboardSummary["orderStatusCounts"]>(
+      (counts, order) => ({
+        ...counts,
+        [order.status]: (counts[order.status] ?? 0) + 1,
+      }),
+      {},
+    );
+
+    return envelope({
+      ...mockDashboard,
+      orderStatusCounts,
+      upcomingPickups: orders.filter((order) =>
+        ["reserved", "late_pickup"].includes(order.status),
+      ),
+      upcomingReturns: orders.filter((order) =>
+        ["picked_up", "late_return"].includes(order.status),
+      ),
+    });
   },
 };
