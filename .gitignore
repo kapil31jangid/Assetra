@@ -1,3 +1,13 @@
 node_modules
 wireframe
+<<<<<<< HEAD
 dist
+=======
+dist
+
+# Backend
+backend/.env
+backend/.venv/
+backend/**/__pycache__/
+backend/.pytest_cache/
+>>>>>>> 60ad778 (Backend foundation)
