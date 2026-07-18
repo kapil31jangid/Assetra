@@ -99,9 +99,14 @@ export function CheckoutPage() {
   const handleContinue = () => {
     if (!isValid()) return;
     
-    // In a real app, we'd save these preferences to the checkout session API
-    // Navigate to Payment step
-    navigate(ROUTES.checkout + "/payment");
+    // Pass selected details to payment page
+    navigate(ROUTES.checkoutPayment, {
+      state: {
+        deliveryMethod,
+        selectedDeliveryAddressId,
+        selectedBillingAddressId: billingSameAsDelivery ? selectedDeliveryAddressId : selectedBillingAddressId
+      }
+    });
   };
 
   const handleOpenNewAddress = () => {

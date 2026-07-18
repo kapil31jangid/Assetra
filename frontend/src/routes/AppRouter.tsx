@@ -26,6 +26,11 @@ const CheckoutPage = lazy(() =>
     default: module.CheckoutPage,
   })),
 );
+const PaymentPage = lazy(() =>
+  import("../pages/PaymentPage").then((module) => ({
+    default: module.PaymentPage,
+  })),
+);
 const CheckoutSuccessPage = lazy(() =>
   import("../pages/CheckoutSuccessPage").then((module) => ({
     default: module.CheckoutSuccessPage,
@@ -165,6 +170,7 @@ export function AppRouter() {
               <Route element={<ProductDetailPage />} path={ROUTES.productDetail} />
               <Route element={<CartPage />} path={ROUTES.cart} />
               <Route element={<CheckoutPage />} path={ROUTES.checkout} />
+              <Route element={<PaymentPage />} path={ROUTES.checkoutPayment} />
               <Route
                 element={<CheckoutSuccessPage />}
                 path={ROUTES.checkoutSuccess}
