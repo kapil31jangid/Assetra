@@ -110,7 +110,7 @@ export function ReportsPage() {
                   series: [
                     {
                       type: "bar",
-                      data: [58000, 72000, 64000, revenue || 90000],
+                      data: [0, 0, 0, revenue || 0],
                       itemStyle: { color: "#1f9d84" },
                     },
                   ],

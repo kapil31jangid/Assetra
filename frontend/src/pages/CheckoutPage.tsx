@@ -15,9 +15,10 @@ import { Link as RouterLink, Navigate, useNavigate } from "react-router-dom";
 
 import { PageHeader } from "../components/PageHeader";
 import { calculateCartTotals, type CheckoutOrder } from "../features/cart/cart";
-import { saveCheckoutOrder } from "../features/cart/orderStorage";
 import { useCart } from "../features/cart/useCart";
 import { ROUTES } from "../constants/routes";
+import { api } from "../services/api";
+import { useCreateOrderMutation, useSessionQuery } from "../services/queries";
 import { formatMoney } from "../utils/catalog";
 
 type FulfillmentMode = CheckoutOrder["fulfillmentMode"];
@@ -25,6 +26,9 @@ type FulfillmentMode = CheckoutOrder["fulfillmentMode"];
 export function CheckoutPage() {
   const navigate = useNavigate();
   const cart = useCart();
+  const session = useSessionQuery();
+  const createOrder = useCreateOrderMutation();
+  const [error, setError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("Nisha Rao");
   const [email, setEmail] = useState("nisha@example.com");
   const [phone, setPhone] = useState("+91 98765 43210");
@@ -43,10 +47,12 @@ export function CheckoutPage() {
 
   if (cart.items.length === 0) return <Navigate replace to={ROUTES.cart} />;
 
-  const submitOrder = () => {
+  const submitOrder = async () => {
     setTouched(true);
     if (!isValid) return;
 
+    if (!session.data?.data.user) return;
+    setError(null);
     const order: CheckoutOrder = {
       id: `order_${crypto.randomUUID()}`,
       number: `ARO-${Date.now().toString().slice(-6)}`,
@@ -61,9 +67,19 @@ export function CheckoutPage() {
       createdAt: new Date().toISOString(),
     };
 
-    saveCheckoutOrder(order);
-    cart.clearCart();
-    navigate(ROUTES.checkoutSuccess, { replace: true });
+    try {
+      const response = await createOrder.mutateAsync({
+        customerId: session.data.data.user.id,
+        lines: cart.items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, rentalPeriod: { startsAt: item.startsAt, endsAt: item.endsAt, unit: item.rentalUnit, quantity: 1, timezone: "Asia/Kolkata" } })),
+        schedule: { mode: fulfillmentMode, scheduledPickupAt: cart.items[0].startsAt, scheduledReturnAt: cart.items[0].endsAt, gracePeriodMinutes: 0 },
+      });
+      const intent = await api.createPaymentIntent(response.data.id, `checkout_${response.data.id}`);
+      await api.confirmPayment(intent.data.id);
+      cart.clearCart();
+      navigate(ROUTES.checkoutSuccess, { replace: true, state: { order } });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Checkout could not be completed.");
+    }
   };
 
   return (
@@ -74,7 +90,7 @@ export function CheckoutPage() {
             Back to cart
           </Button>
         }
-        description="Confirm fulfillment, deposit, and mock payment details."
+        description="Confirm fulfillment, security deposit, and sandbox payment."
         title="Checkout"
       />
 
@@ -183,12 +199,11 @@ export function CheckoutPage() {
                   Payment
                 </Typography>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Payment gateway integration is mocked for Phase 5. The order
-                  is confirmed without charging a card.
+                  This environment uses the sandbox payment provider. The backend records the rental payment and security-deposit hold.
                 </Alert>
                 <TextField
                   fullWidth
-                  helperText="Use ASSET10 for a 10% mock rental discount."
+                  helperText="Discount codes are validated by the backend during checkout."
                   label="Coupon code"
                   onChange={(event) => setCouponCode(event.target.value)}
                   value={couponCode}
@@ -205,6 +220,7 @@ export function CheckoutPage() {
                 Review
               </Typography>
               <Stack spacing={1.25}>
+                {error ? <Alert severity="error">{error}</Alert> : null}
                 {cart.items.map((item) => (
                   <Box key={item.id}>
                     <Typography sx={{ fontWeight: 700 }} variant="body2">
@@ -254,7 +270,8 @@ export function CheckoutPage() {
                   <Typography variant="h4">{formatMoney(totals.total)}</Typography>
                 </Stack>
                 <Button
-                  onClick={submitOrder}
+                  disabled={createOrder.isPending || session.isLoading}
+                  onClick={() => void submitOrder()}
                   startIcon={<CheckCircleOutlineOutlinedIcon />}
                   variant="contained"
                 >

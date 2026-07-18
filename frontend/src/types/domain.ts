@@ -110,6 +110,7 @@ export interface CustomerSummary {
 export interface Session {
   user: UserSummary;
   expiresAt: IsoDateTime;
+  accessToken?: string;
 }
 
 export const RENTAL_PERIOD_UNITS = [

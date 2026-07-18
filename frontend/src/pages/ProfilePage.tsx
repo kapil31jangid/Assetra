@@ -13,7 +13,7 @@ import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
-import { useSessionQuery } from "../services/queries";
+import { useProfileMutation, useProfileQuery, useSessionQuery } from "../services/queries";
 
 interface CustomerProfile {
   name: string;
@@ -23,22 +23,10 @@ interface CustomerProfile {
   preferredFulfillment: string;
 }
 
-const profileStorageKey = "assetra.mock.profile";
-
-const readProfile = (fallback: CustomerProfile): CustomerProfile => {
-  const raw = window.localStorage.getItem(profileStorageKey);
-  if (!raw) return fallback;
-
-  try {
-    return { ...fallback, ...(JSON.parse(raw) as Partial<CustomerProfile>) };
-  } catch {
-    window.localStorage.removeItem(profileStorageKey);
-    return fallback;
-  }
-};
-
 export function ProfilePage() {
   const session = useSessionQuery();
+  const profileQuery = useProfileQuery();
+  const profileMutation = useProfileMutation();
   const fallbackProfile: CustomerProfile = {
     name: session.data?.data.user.name ?? "Nisha Rao",
     email: session.data?.data.user.email ?? "nisha@example.com",
@@ -46,25 +34,26 @@ export function ProfilePage() {
     defaultAddress: "12 MG Road, Bengaluru, Karnataka 560001",
     preferredFulfillment: "Store pickup",
   };
-  const [profile, setProfile] = useState<CustomerProfile>(() =>
-    readProfile(fallbackProfile),
-  );
+  const [profile, setProfile] = useState<CustomerProfile>(fallbackProfile);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    if (profileQuery.data?.data) {
+      setProfile((current) => ({ ...current, ...profileQuery.data.data, phone: profileQuery.data.data.phone ?? current.phone }));
+    }
     setProfile((current) => ({
       ...fallbackProfile,
       ...current,
     }));
-  }, [fallbackProfile.email, fallbackProfile.name]);
+  }, [fallbackProfile.email, fallbackProfile.name, profileQuery.data]);
 
   const updateProfile = (key: keyof CustomerProfile, value: string) => {
     setSaved(false);
     setProfile((current) => ({ ...current, [key]: value }));
   };
 
-  const saveProfile = () => {
-    window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
+  const saveProfile = async () => {
+    await profileMutation.mutateAsync({ name: profile.name, phone: profile.phone });
     setSaved(true);
   };
 
@@ -84,7 +73,7 @@ export function ProfilePage() {
               </Typography>
               {saved ? (
                 <Alert severity="success" sx={{ mb: 2 }}>
-                  Profile saved locally for the mock account.
+                  Profile saved to the database.
                 </Alert>
               ) : null}
               <Grid container spacing={1.5}>
@@ -138,7 +127,8 @@ export function ProfilePage() {
               </Grid>
               <Box sx={{ mt: 2 }}>
                 <Button
-                  onClick={saveProfile}
+                  disabled={profileMutation.isPending}
+                  onClick={() => void saveProfile()}
                   startIcon={<SaveOutlinedIcon />}
                   variant="contained"
                 >

@@ -97,7 +97,7 @@ export function DashboardPage() {
                   >
                     <Typography variant="body2">{order.number}</Typography>
                     <Typography color="text.secondary" variant="body2">
-                      {order.customer.name}
+                      {order.customer?.name ?? 'Unknown'}
                     </Typography>
                   </Stack>
                 ))}

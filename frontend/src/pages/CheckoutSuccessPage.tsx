@@ -7,16 +7,16 @@ import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { Link as RouterLink, Navigate } from "react-router-dom";
+import { Link as RouterLink, Navigate, useLocation } from "react-router-dom";
 
 import { PageHeader } from "../components/PageHeader";
-import { getCartItemRentalAmount } from "../features/cart/cart";
-import { readCheckoutOrder } from "../features/cart/orderStorage";
+import { getCartItemRentalAmount, type CheckoutOrder } from "../features/cart/cart";
 import { ROUTES } from "../constants/routes";
 import { formatMoney } from "../utils/catalog";
 
 export function CheckoutSuccessPage() {
-  const order = readCheckoutOrder();
+  const location = useLocation();
+  const order = (location.state as { order?: CheckoutOrder } | null)?.order;
 
   if (!order) return <Navigate replace to={ROUTES.catalog} />;
 
@@ -37,7 +37,7 @@ export function CheckoutSuccessPage() {
             </Button>
           </Stack>
         }
-        description="Your mock rental order has been confirmed."
+        description="Your rental order and sandbox payment have been confirmed."
         title={`Order ${order.number}`}
       />
 

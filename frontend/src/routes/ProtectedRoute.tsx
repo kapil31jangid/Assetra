@@ -18,11 +18,11 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <LoadingState />;
   }
 
-  if (session.isError || !session.data?.data.user) {
+  if (session.isError || !session.data?.data?.user) {
     return <Navigate replace state={{ from: location }} to={ROUTES.login} />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(session.data.data.user.role)) {
+  if (allowedRoles && !allowedRoles.includes(session.data.data?.user?.role)) {
     return <Navigate replace to={getRoleHomeRoute(session.data.data.user.role)} />;
   }
 

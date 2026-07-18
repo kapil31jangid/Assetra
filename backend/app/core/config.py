@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://assetra:assetra@localhost:5432/assetra"
     jwt_secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
+    session_cookie_name: str = "assetra_session"
+    frontend_origin: str = "http://localhost:5173"
+    seed_on_startup: bool = False
+    tax_rate: float = 18.0
+    default_currency: str = "INR"
+    default_timezone: str = "Asia/Kolkata"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -202,7 +202,7 @@ export function OperationsLayout() {
           <Tooltip title="User menu">
             <IconButton color="inherit" onClick={openUserMenu}>
               <Avatar sx={{ height: 32, width: 32 }}>
-                {user?.name.charAt(0) ?? "A"}
+                {user?.name?.charAt(0) ?? "A"}
               </Avatar>
             </IconButton>
           </Tooltip>
