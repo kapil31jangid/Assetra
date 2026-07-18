@@ -19,6 +19,8 @@ export const queryKeys = {
   product: (productId: string) => ["products", productId] as const,
   orders: (query?: RentalOrderListQuery) => ["orders", query ?? {}] as const,
   order: (orderId: string) => ["orders", orderId] as const,
+  invoices: ["invoices"] as const,
+  pricelists: ["pricing", "pricelists"] as const,
 };
 
 export const useSessionQuery = () =>
@@ -145,3 +147,15 @@ export const useRecordFulfillmentMutation = () => {
     onSuccess: invalidateOrders,
   });
 };
+
+export const useInvoicesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.invoices,
+    queryFn: () => api.getInvoices({ pageSize: 100 }),
+  });
+
+export const usePricelistsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.pricelists,
+    queryFn: api.getPricelists,
+  });
