@@ -3,7 +3,14 @@ import CardContent from "@mui/material/CardContent";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import ReactECharts from "echarts-for-react";
+import { BarChart, LineChart, PieChart } from "echarts/charts";
+import {
+  GridComponent,
+  TooltipComponent,
+} from "echarts/components";
+import * as echarts from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+import ReactEChartsCore from "echarts-for-react/lib/core";
 
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -15,6 +22,15 @@ import {
 } from "../services/queries";
 import { RENTAL_ORDER_STATUS_LABELS } from "../types";
 import { formatMoney } from "../utils/catalog";
+
+echarts.use([
+  BarChart,
+  CanvasRenderer,
+  GridComponent,
+  LineChart,
+  PieChart,
+  TooltipComponent,
+]);
 
 export function ReportsPage() {
   const dashboard = useDashboardSummaryQuery();
@@ -82,7 +98,8 @@ export function ReportsPage() {
               <Typography sx={{ mb: 2 }} variant="h3">
                 Revenue trend
               </Typography>
-              <ReactECharts
+              <ReactEChartsCore
+                echarts={echarts}
                 option={{
                   grid: { left: 40, right: 20, top: 20, bottom: 32 },
                   xAxis: {
@@ -109,7 +126,8 @@ export function ReportsPage() {
               <Typography sx={{ mb: 2 }} variant="h3">
                 Order status
               </Typography>
-              <ReactECharts
+              <ReactEChartsCore
+                echarts={echarts}
                 option={{
                   tooltip: { trigger: "item" },
                   series: [
@@ -139,7 +157,8 @@ export function ReportsPage() {
               <Typography sx={{ mb: 2 }} variant="h3">
                 Product utilization
               </Typography>
-              <ReactECharts
+              <ReactEChartsCore
+                echarts={echarts}
                 option={{
                   grid: { left: 36, right: 16, top: 20, bottom: 70 },
                   xAxis: {
