@@ -3,13 +3,16 @@ import type { AxiosResponse } from "axios";
 import { apiClient } from "./api-client";
 import type {
   ApiResponse,
+  CreateRentalOrderRequest,
   ForgotPasswordRequest,
   ListQuery,
   LoginRequest,
   PaginatedResponse,
   ProductListQuery,
+  RecordFulfillmentRequest,
   RentalOrderListQuery,
   SignupRequest,
+  UpdateRentalOrderStatusRequest,
 } from "./api-contract";
 import { envConfig } from "./config";
 import { mockApi } from "./mock-api";
@@ -85,6 +88,48 @@ export const api = {
     if (envConfig.useMockApi) return mockApi.getOrders(query);
     return apiClient
       .get<PaginatedResponse<RentalOrder>>("/rental-orders", { params: query })
+      .then(responseData);
+  },
+
+  async getOrder(orderId: string): Promise<ApiResponse<RentalOrder>> {
+    if (envConfig.useMockApi) return mockApi.getOrder(orderId);
+    return apiClient
+      .get<ApiResponse<RentalOrder>>(`/rental-orders/${orderId}`)
+      .then(responseData);
+  },
+
+  async createOrder(
+    request: CreateRentalOrderRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    if (envConfig.useMockApi) return mockApi.createOrder(request);
+    return apiClient
+      .post<ApiResponse<RentalOrder>>("/rental-orders", request)
+      .then(responseData);
+  },
+
+  async updateOrderStatus(
+    orderId: string,
+    request: UpdateRentalOrderStatusRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    if (envConfig.useMockApi) return mockApi.updateOrderStatus(orderId, request);
+    return apiClient
+      .post<ApiResponse<RentalOrder>>(
+        `/rental-orders/${orderId}/status`,
+        request,
+      )
+      .then(responseData);
+  },
+
+  async recordFulfillment(
+    orderId: string,
+    request: RecordFulfillmentRequest,
+  ): Promise<ApiResponse<RentalOrder>> {
+    if (envConfig.useMockApi) return mockApi.recordFulfillment(orderId, request);
+    return apiClient
+      .post<ApiResponse<RentalOrder>>(
+        `/rental-orders/${orderId}/fulfillment`,
+        request,
+      )
       .then(responseData);
   },
 
