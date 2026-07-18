@@ -10,12 +10,16 @@ import { AuthLayout } from "../layouts/AuthLayout";
 import { CustomerPortalLayout } from "../layouts/CustomerPortalLayout";
 import { OperationsLayout } from "../layouts/OperationsLayout";
 import { CatalogPage } from "../pages/CatalogPage";
+import { CartPage } from "../pages/CartPage";
+import { CheckoutPage } from "../pages/CheckoutPage";
+import { CheckoutSuccessPage } from "../pages/CheckoutSuccessPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { ProductDetailPage } from "../pages/ProductDetailPage";
 import { SignupPage } from "../pages/SignupPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -113,23 +117,12 @@ export function AppRouter() {
         >
           <Route element={<CustomerPortalLayout />}>
             <Route element={<CatalogPage />} path={ROUTES.catalog} />
+            <Route element={<ProductDetailPage />} path={ROUTES.productDetail} />
+            <Route element={<CartPage />} path={ROUTES.cart} />
+            <Route element={<CheckoutPage />} path={ROUTES.checkout} />
             <Route
-              element={
-                <PlaceholderPage
-                  description="Cart route placeholder for Phase 5 checkout work."
-                  title="Cart"
-                />
-              }
-              path={ROUTES.cart}
-            />
-            <Route
-              element={
-                <PlaceholderPage
-                  description="Checkout route placeholder for rental booking."
-                  title="Checkout"
-                />
-              }
-              path={ROUTES.checkout}
+              element={<CheckoutSuccessPage />}
+              path={ROUTES.checkoutSuccess}
             />
             <Route
               element={

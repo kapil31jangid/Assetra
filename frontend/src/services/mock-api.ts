@@ -25,6 +25,7 @@ import type {
   Session,
   UserSummary,
 } from "../types";
+import { getProductDailyRate } from "../utils/catalog";
 
 const wait = () => new Promise((resolve) => window.setTimeout(resolve, 180));
 const sessionStorageKey = "assetra.mock.session";
@@ -151,13 +152,59 @@ export const mockApi = {
   ): Promise<PaginatedResponse<Product>> {
     await wait();
     const search = query?.search?.toLowerCase();
-    const items = search
-      ? mockProducts.filter((product) =>
-          product.name.toLowerCase().includes(search),
-        )
-      : mockProducts;
+    const items = mockProducts.filter((product) => {
+      const dailyRate = getProductDailyRate(product).amount;
+      const matchesSearch = search
+        ? [product.name, product.description, product.brand, ...product.tags]
+            .filter(Boolean)
+            .some((value) => value?.toLowerCase().includes(search))
+        : true;
+      const matchesCategory = query?.categoryId
+        ? product.category.id === query.categoryId
+        : true;
+      const matchesBrand = query?.brand ? product.brand === query.brand : true;
+      const matchesColor = query?.color
+        ? product.colors?.includes(query.color)
+        : true;
+      const matchesUnit = query?.rentalUnit
+        ? product.rentalUnits.includes(query.rentalUnit)
+        : true;
+      const matchesMinPrice =
+        query?.minPrice === undefined || dailyRate >= query.minPrice;
+      const matchesMaxPrice =
+        query?.maxPrice === undefined || dailyRate <= query.maxPrice;
+      const matchesAvailability =
+        !query?.availableFrom ||
+        !query?.availableTo ||
+        product.availabilityStatus !== "unavailable";
+
+      return (
+        product.active &&
+        matchesSearch &&
+        matchesCategory &&
+        matchesBrand &&
+        matchesColor &&
+        matchesUnit &&
+        matchesMinPrice &&
+        matchesMaxPrice &&
+        matchesAvailability
+      );
+    });
 
     return paginate(items, query);
+  },
+
+  async getProduct(productId: string): Promise<ApiResponse<Product>> {
+    await wait();
+    const product = mockProducts.find(
+      (item) => item.id === productId || item.slug === productId,
+    );
+
+    if (!product) {
+      throw new Error("Product could not be found.");
+    }
+
+    return envelope(product);
   },
 
   async getOrders(

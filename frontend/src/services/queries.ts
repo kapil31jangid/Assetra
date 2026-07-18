@@ -13,6 +13,7 @@ export const queryKeys = {
   session: ["session"] as const,
   dashboard: ["dashboard", "summary"] as const,
   products: (query?: ProductListQuery) => ["products", query ?? {}] as const,
+  product: (productId: string) => ["products", productId] as const,
   orders: (query?: RentalOrderListQuery) => ["orders", query ?? {}] as const,
 };
 
@@ -71,6 +72,13 @@ export const useProductsQuery = (query?: ProductListQuery) =>
   useQuery({
     queryKey: queryKeys.products(query),
     queryFn: () => api.getProducts(query),
+  });
+
+export const useProductQuery = (productId?: string) =>
+  useQuery({
+    enabled: Boolean(productId),
+    queryKey: queryKeys.product(productId ?? ""),
+    queryFn: () => api.getProduct(productId ?? ""),
   });
 
 export const useOrdersQuery = (query?: RentalOrderListQuery) =>
