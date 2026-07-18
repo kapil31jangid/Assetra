@@ -18,13 +18,19 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { ProductVisual } from "../features/catalog/ProductVisual";
 import { useWishlist } from "../features/catalog/useWishlist";
+import { getRentalQuantity } from "../features/cart/cart";
+import { useCart } from "../features/cart/useCart";
 import { ROUTES } from "../constants/routes";
 import { useProductQuery } from "../services/queries";
 import type { RentalPeriodUnit } from "../types";
@@ -32,25 +38,12 @@ import { formatMoney, getProductDailyRate } from "../utils/catalog";
 
 const toDateTimeInput = (value: dayjs.Dayjs) => value.format("YYYY-MM-DDTHH:mm");
 
-const getRentalQuantity = (
-  startsAt: string,
-  endsAt: string,
-  unit: RentalPeriodUnit,
-) => {
-  const start = dayjs(startsAt);
-  const end = dayjs(endsAt);
-  const hours = Math.max(1, end.diff(start, "hour", true));
-
-  if (unit === "hourly") return Math.ceil(hours);
-  if (unit === "weekly") return Math.ceil(hours / 24 / 7);
-  if (unit === "monthly") return Math.ceil(hours / 24 / 30);
-  return Math.ceil(hours / 24);
-};
-
 export function ProductDetailPage() {
   const { productId } = useParams();
+  const navigate = useNavigate();
   const productQuery = useProductQuery(productId);
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const cart = useCart();
   const [quantity, setQuantity] = useState(1);
   const [startsAt, setStartsAt] = useState(() =>
     toDateTimeInput(dayjs().add(1, "day").hour(10).minute(0)),
@@ -81,8 +74,11 @@ export function ProductDetailPage() {
       }
     : null;
   const canConfigure = useMemo(
-    () => dayjs(endsAt).isAfter(dayjs(startsAt)) && quantity > 0,
-    [endsAt, quantity, startsAt],
+    () =>
+      dayjs(endsAt).isAfter(dayjs(startsAt)) &&
+      quantity > 0 &&
+      quantity <= (selectedVariant?.stock.available ?? 0),
+    [endsAt, quantity, selectedVariant?.stock.available, startsAt],
   );
 
   if (productQuery.isLoading) return <LoadingState label="Loading product" />;
@@ -343,13 +339,32 @@ export function ProductDetailPage() {
 
                 <Button
                   disabled={!canConfigure}
+                  onClick={() => {
+                    if (!activeUnit || !rate || !selectedVariant) return;
+
+                    cart.addItem({
+                      id: `cart_${crypto.randomUUID()}`,
+                      productId: product.id,
+                      productName: product.name,
+                      variantId: selectedVariant.id,
+                      variantName: selectedVariant.name,
+                      quantity,
+                      rentalUnit: activeUnit,
+                      startsAt,
+                      endsAt,
+                      unitPrice: rate,
+                      deposit: product.depositPolicy.amount,
+                    });
+                    navigate(ROUTES.cart);
+                  }}
                   startIcon={<ShoppingCartOutlinedIcon />}
                   variant="contained"
                 >
                   Add to cart
                 </Button>
                 <Typography color="text.secondary" variant="caption">
-                  Cart persistence and checkout are scheduled for Phase 5.
+                  You can adjust quantity and continue to checkout from the
+                  cart.
                 </Typography>
               </Stack>
             </CardContent>

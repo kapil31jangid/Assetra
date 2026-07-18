@@ -31,6 +31,7 @@ import {
 
 import logoUrl from "../assets/OnlyLogo.png";
 import { ROUTES } from "../constants/routes";
+import { useCart } from "../features/cart/useCart";
 import { useLogoutMutation } from "../services/queries";
 
 const portalNavItems = [
@@ -61,6 +62,7 @@ export function CustomerPortalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useLogoutMutation();
+  const cart = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const closeDrawer = () => setMobileOpen(false);
@@ -143,7 +145,7 @@ export function CustomerPortalLayout() {
           <Box sx={{ flexGrow: { xs: 1, lg: 0 } }} />
           <Tooltip title="Cart">
             <IconButton component={RouterLink} to={ROUTES.cart}>
-              <Badge badgeContent={0} color="secondary">
+              <Badge badgeContent={cart.itemCount} color="secondary">
                 <ShoppingCartOutlinedIcon />
               </Badge>
             </IconButton>

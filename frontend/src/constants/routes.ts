@@ -16,6 +16,7 @@ export const ROUTES = {
   productDetail: "/portal/catalog/:productId",
   cart: "/portal/cart",
   checkout: "/portal/checkout",
+  checkoutSuccess: "/portal/checkout/success",
   customerOrders: "/portal/orders",
   customerInvoices: "/portal/invoices",
   wishlist: "/portal/wishlist",
