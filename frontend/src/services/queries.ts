@@ -335,6 +335,8 @@ export const useDeletePricelistMutation = () => {
     mutationFn: (id: string) => api.deletePricelist(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pricelists }),
   });
+};
+
 export const useQuotationTemplatesQuery = () =>
   useQuery({
     queryKey: queryKeys.quotationTemplates,
