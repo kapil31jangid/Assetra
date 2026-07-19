@@ -1,0 +1,76 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Assetra — Docker Compose (project root)
+#
+# Usage:
+#   cp .env.example .env          # fill in your secrets
+#   docker compose up --build -d  # build + start all services
+#   docker compose logs -f        # tail logs
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: assetra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-assetra}
+      POSTGRES_USER:     ${POSTGRES_USER:-assetra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - assetra_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assetra} -d ${POSTGRES_DB:-assetra}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  # ── Backend (FastAPI / Uvicorn) ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: assetra-backend
+    restart: unless-stopped
+    # The entrypoint runs `alembic upgrade head` then starts uvicorn.
+    # For production you'd run migrations as a separate controlled step;
+    # see README for details.
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point at the compose postgres service name
+      ASSETRA_DATABASE_URL: >-
+        postgresql+psycopg://${POSTGRES_USER:-assetra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-assetra}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Persist uploaded images across restarts
+      - assetra_uploads:/app/uploads
+
+  # ── Frontend (React / Vite / Nginx) ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Bake the API URL in at build time (e.g. /api/v1).
+        # We proxy /api to the backend in nginx.conf, so relative paths work.
+        VITE_API_BASE_URL: /api/v1
+    container_name: assetra-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  assetra_postgres_data:
+  assetra_uploads:

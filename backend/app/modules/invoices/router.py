@@ -280,8 +280,10 @@ async def record_payment(
     })
 
 
+from app.modules.invoices.pdf import generate_invoice_pdf
+
 # ---------------------------------------------------------------------------
-# Download (text invoice)
+# Download (PDF invoice)
 # ---------------------------------------------------------------------------
 
 @router.get("/{invoice_id}/download")
@@ -292,29 +294,13 @@ async def download_invoice(
 ) -> Response:
     body = await get_invoice(invoice_id, db, claims)
     data = body["data"]
-    lines_text = "".join(
-        f"  {line['description']} x {line['quantity']} = "
-        f"₹{line['total']['amount']:.2f}\n"
-        for line in data.get("lines", [])
-    )
-    content = (
-        f"ASSETRA RENTAL\n"
-        f"Invoice: {data['number']}\n"
-        f"Status:  {data['status'].upper()}  |  Payment: {data['paymentStatus'].upper()}\n"
-        f"Customer: {data['customer'].get('name', '')} <{data['customer'].get('email', '')}>\n"
-        f"Issued:  {data.get('issuedAt', 'N/A')}\n"
-        f"Due:     {data.get('dueAt', 'N/A')}\n"
-        f"{'─' * 50}\n"
-        f"{lines_text}"
-        f"{'─' * 50}\n"
-        f"Subtotal: ₹{data['subtotal']['amount']:.2f}\n"
-        f"Tax:      ₹{data['tax']['amount']:.2f}\n"
-        f"Total:    ₹{data['total']['amount']:.2f}\n"
-        f"Paid:     ₹{data['amountPaid']:.2f}\n"
-        f"Balance:  ₹{data['total']['amount'] - data['amountPaid']:.2f}\n"
-    )
+    
+    pdf_bytes = generate_invoice_pdf(data)
+    
     return Response(
-        content=content,
-        media_type="text/plain",
-        headers={"Content-Disposition": f"attachment; filename={data['number'].replace('/', '-')}.txt"},
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{data["number"].replace("/", "_")}.pdf"'
+        },
     )

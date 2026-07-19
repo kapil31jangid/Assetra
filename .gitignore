@@ -2,10 +2,27 @@ node_modules
 wireframe
 dist
 
-# Backend
+# ── Backend ───────────────────────────────────────────────────────────────────
 backend/.env
 backend/.venv/
 backend/**/__pycache__/
 backend/.pytest_cache/
+backend/.ruff_cache/
 backend/assetra_backend.egg-info/
 backend/uploads/
+
+# ── Docker / environment secrets ──────────────────────────────────────────────
+.env
+# Never commit the real .env — only .env.example (no secrets) is committed.
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ── Editor / OS ───────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/

@@ -15,8 +15,13 @@ export const getProductDetailRoute = (productId: Id) =>
 
 export const getProductDailyRate = (product: Product): Money =>
   catalogDailyRates[product.id] ?? {
+<<<<<<< HEAD
     amount: Number(product.salesPrice ?? product.basePrice?.amount ?? 0),
     currency: product.depositPolicy?.amount?.currency ?? "INR",
+=======
+    amount: product.salesPrice,
+    currency: "INR",
+>>>>>>> f5d0d4884e389af6fea32716ccf9041bc2cd3b7f
   };
 
 export const formatMoney = (money: Money) =>
