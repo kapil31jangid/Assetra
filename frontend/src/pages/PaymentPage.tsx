@@ -26,12 +26,11 @@ import { ROUTES } from "../constants/routes";
 import { useCart } from "../features/cart/useCart";
 import { calculateCartTotals, getCartItemRentalAmount, type CheckoutOrder } from "../features/cart/cart";
 import { formatMoney } from "../utils/catalog";
-import { useCreateOrderMutation, useSessionQuery } from "../services/queries";
-import { api } from "../services/api";
+import { useCheckoutMutation, useSessionQuery } from "../services/queries";
 
-// Mock Saved Cards
-const MOCK_SAVED_CARDS = [
-  { id: "card_1", brand: "Visa", masked: "**** **** **** 4242", expiry: "12/28" }
+// Placeholder saved cards — cards will be surfaced by the backend in a future iteration
+const SAVED_CARDS = [
+  { id: "card_visa_4242", brand: "Visa", masked: "**** **** **** 4242", expiry: "12/28" }
 ];
 
 export function PaymentPage() {
@@ -39,7 +38,7 @@ export function PaymentPage() {
   const location = useLocation();
   const cart = useCart();
   const session = useSessionQuery();
-  const createOrder = useCreateOrderMutation();
+  const checkout = useCheckoutMutation();
   
   // State from Address Step
   const checkoutState = location.state as {
@@ -49,7 +48,7 @@ export function PaymentPage() {
   } | null;
 
   // Local state
-  const [paymentMethod, setPaymentMethod] = useState<string>(MOCK_SAVED_CARDS[0].id);
+  const [paymentMethod, setPaymentMethod] = useState<string>(SAVED_CARDS[0].id);
   const [cardForm, setCardForm] = useState({
     number: "",
     expiry: "",
@@ -90,48 +89,45 @@ export function PaymentPage() {
     setError(null);
 
     try {
-      // Create mock CheckoutOrder for success state
-      const order: CheckoutOrder = {
-        id: `order_${crypto.randomUUID()}`,
-        number: `ARO-${Date.now().toString().slice(-6)}`,
-        customerName: session.data.data.user.name || "Customer",
-        email: session.data.data.user.email || "customer@example.com",
-        phone: "+91 0000000000",
-        fulfillmentMode: deliveryMethod,
-        address: selectedDeliveryAddressId || undefined, // simplified for mockup
-        items: cart.items,
-        totals,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Real API Call (Mocked Payment)
-      const response = await createOrder.mutateAsync({
-        customerId: session.data.data.user.id,
-        lines: cart.items.map((item) => ({ 
-          productId: item.productId, 
-          variantId: item.variantId, 
-          quantity: item.quantity, 
-          rentalPeriod: { 
-            startsAt: item.startsAt, 
-            endsAt: item.endsAt, 
-            unit: item.rentalUnit, 
-            quantity: 1, 
-            timezone: "Asia/Kolkata" 
-          } 
+      // Derive delivery address object from the address ID stored in state
+      // (the full address is not passed in current flow; the backend handles
+      //  delivery details as an optional field — store_pickup mode needs none)
+      const result = await checkout.mutateAsync({
+        lines: cart.items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          rentalPeriod: {
+            startsAt: item.startsAt,
+            endsAt: item.endsAt,
+            unit: item.rentalUnit,
+            quantity: 1,
+            timezone: "Asia/Kolkata",
+          },
         })),
-        schedule: { 
-          mode: deliveryMethod, 
-          scheduledPickupAt: cart.items[0].startsAt, 
-          scheduledReturnAt: cart.items[0].endsAt, 
-          gracePeriodMinutes: 0 
-        },
+        deliveryMethod: deliveryMethod === "delivery" ? "delivery" : "pickup",
+        idempotencyKey: `checkout_${Date.now()}_${session.data?.data?.user?.id ?? "anon"}`,
       });
 
-      const intent = await api.createPaymentIntent(response.data.id, `checkout_${response.data.id}`);
-      await api.confirmPayment(intent.data.id);
-      
+      const { order, invoiceNumber, paymentReference } = result.data;
+
+      const checkoutOrder: CheckoutOrder = {
+        id: order.id,
+        number: order.number,
+        customerName: session.data?.data?.user?.name || "Customer",
+        email: session.data?.data?.user?.email || "",
+        phone: "+91 0000000000",
+        fulfillmentMode: deliveryMethod,
+        address: selectedDeliveryAddressId || undefined,
+        items: cart.items,
+        totals,
+        createdAt: order.createdAt,
+        invoiceNumber,
+        paymentReference,
+      };
+
       cart.clearCart();
-      navigate(ROUTES.checkoutSuccess, { replace: true, state: { order } });
+      navigate(ROUTES.checkoutSuccess, { replace: true, state: { order: checkoutOrder } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Payment failed. Please try again.");
     } finally {
@@ -178,7 +174,7 @@ export function PaymentPage() {
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
                   <Stack spacing={2}>
-                    {MOCK_SAVED_CARDS.map(card => (
+                    {SAVED_CARDS.map(card => (
                       <Box key={card.id} sx={{ p: 2, border: "1px solid", borderColor: paymentMethod === card.id ? "primary.main" : "divider", borderRadius: 1 }}>
                         <FormControlLabel 
                           value={card.id}

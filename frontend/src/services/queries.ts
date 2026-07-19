@@ -2,20 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   api,
+  type AddressRecord,
   type Category,
+  type CheckoutRequest,
   type CreateCategoryRequest,
   type CreateProductRequest,
   type CreatePricelistRequest,
   type UpdatePricelistRequest,
-  type QuotationTemplate,
   type CreateQuotationTemplateRequest,
   type UpdateQuotationTemplateRequest,
   type OrganizationSettings,
-  type Pricelist,
-  type Product,
-  type ProductAttribute,
-  type RentalOrder,
-  type Session,
   type UpdateProductRequest,
   type UserProfile,
 } from "./api";
@@ -31,23 +27,35 @@ import type {
   UpdateRentalOrderStatusRequest,
 } from "./api-contract";
 
+// ---------------------------------------------------------------------------
+// Query keys
+// ---------------------------------------------------------------------------
+
 export const queryKeys = {
   session: ["session"] as const,
+  profile: ["profile"] as const,
+  addresses: ["addresses"] as const,
   dashboard: ["dashboard", "summary"] as const,
   categories: ["categories"] as const,
+  attributes: ["attributes"] as const,
   products: (query?: ProductListQuery & { includeInactive?: boolean }) =>
     ["products", query ?? {}] as const,
   product: (productId: string) => ["products", productId] as const,
   orders: (query?: RentalOrderListQuery) => ["orders", query ?? {}] as const,
   order: (orderId: string) => ["orders", orderId] as const,
-  invoices: ["invoices"] as const,
+  invoices: (query?: Record<string, unknown>) => ["invoices", query ?? {}] as const,
+  invoice: (id: string) => ["invoices", id] as const,
   pricelists: ["pricing", "pricelists"] as const,
   quotationTemplates: ["pricing", "quotation-templates"] as const,
+  settings: ["settings"] as const,
+  users: (query?: Record<string, unknown>) => ["users", query ?? {}] as const,
+  schedule: (year?: number, month?: number) => ["scheduler", year, month] as const,
+  reportsSummary: (params?: Record<string, unknown>) => ["reports", "summary", params ?? {}] as const,
 };
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Session
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export const useSessionQuery = () =>
   useQuery({
@@ -86,14 +94,75 @@ export const useLogoutMutation = () => {
   return useMutation({
     mutationFn: api.logout,
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: queryKeys.session });
+      queryClient.clear();
     },
   });
 };
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
+export const useProfileQuery = () =>
+  useQuery({ queryKey: queryKeys.profile, queryFn: api.getProfile });
+
+export const useProfileMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: Partial<UserProfile>) => api.updateProfile(profile),
+    onSuccess: (profile) => queryClient.setQueryData(queryKeys.profile, profile),
+  });
+};
+
+export const useChangePasswordMutation = () =>
+  useMutation({
+    mutationFn: (payload: { currentPassword: string; newPassword: string }) =>
+      api.changePassword(payload),
+  });
+
+// ---------------------------------------------------------------------------
+// Address Book
+// ---------------------------------------------------------------------------
+
+export const useAddressesQuery = () =>
+  useQuery({ queryKey: queryKeys.addresses, queryFn: api.getAddresses });
+
+export const useCreateAddressMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Omit<AddressRecord, "id" | "isDefault">) => api.createAddress(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.addresses }),
+  });
+};
+
+export const useUpdateAddressMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Omit<AddressRecord, "id">> }) =>
+      api.updateAddress(id, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.addresses }),
+  });
+};
+
+export const useDeleteAddressMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteAddress(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.addresses }),
+  });
+};
+
+export const useSetDefaultAddressMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.setDefaultAddress(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.addresses }),
+  });
+};
+
+// ---------------------------------------------------------------------------
 // Dashboard
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export const useDashboardSummaryQuery = () =>
   useQuery({
@@ -101,9 +170,44 @@ export const useDashboardSummaryQuery = () =>
     queryFn: api.getDashboardSummary,
   });
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Scheduler
+// ---------------------------------------------------------------------------
+
+export const useScheduleQuery = (year?: number, month?: number) =>
+  useQuery({
+    queryKey: queryKeys.schedule(year, month),
+    queryFn: () => api.getSchedule(year, month),
+  });
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+export const useReportsSummaryQuery = (params?: {
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+}) =>
+  useQuery({
+    queryKey: queryKeys.reportsSummary(params as Record<string, unknown>),
+    queryFn: () => api.getReportsSummary(params),
+  });
+
+export const useReportsOrdersQuery = (params?: {
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+  page?: number;
+}) =>
+  useQuery({
+    queryKey: ["reports", "orders", params ?? {}],
+    queryFn: () => api.getReportsOrders(params),
+  });
+
+// ---------------------------------------------------------------------------
 // Categories
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export const useCategoriesQuery = () =>
   useQuery({
@@ -147,22 +251,22 @@ export const useDeleteCategoryMutation = () => {
 // ---------------------------------------------------------------------------
 
 export const useAttributesQuery = () =>
-  useQuery({ queryKey: ["attributes"], queryFn: api.getAttributes });
+  useQuery({ queryKey: queryKeys.attributes, queryFn: api.getAttributes });
 
 export const useCreateAttributeMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: Omit<ProductAttribute, "id">) => api.createAttribute(request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
+    mutationFn: (request: Parameters<typeof api.createAttribute>[0]) => api.createAttribute(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.attributes }),
   });
 };
 
 export const useUpdateAttributeMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: Omit<ProductAttribute, "id"> }) =>
+    mutationFn: ({ id, request }: { id: string; request: Parameters<typeof api.updateAttribute>[1] }) =>
       api.updateAttribute(id, request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.attributes }),
   });
 };
 
@@ -170,13 +274,13 @@ export const useDeleteAttributeMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.deleteAttribute(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attributes"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.attributes }),
   });
 };
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Products
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export const useProductsQuery = (query?: ProductListQuery & { includeInactive?: boolean }) =>
   useQuery({
@@ -228,9 +332,9 @@ export const useUploadImageMutation = () =>
     mutationFn: (file: File) => api.uploadImage(file),
   });
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Orders
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 export const useOrdersQuery = (query?: RentalOrderListQuery) =>
   useQuery({
@@ -250,6 +354,7 @@ const useInvalidateOrders = () => {
   return () => {
     queryClient.invalidateQueries({ queryKey: ["orders"] });
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    queryClient.invalidateQueries({ queryKey: ["reports"] });
   };
 };
 
@@ -257,6 +362,14 @@ export const useCreateOrderMutation = () => {
   const invalidateOrders = useInvalidateOrders();
   return useMutation({
     mutationFn: (request: CreateRentalOrderRequest) => api.createOrder(request),
+    onSuccess: invalidateOrders,
+  });
+};
+
+export const useCheckoutMutation = () => {
+  const invalidateOrders = useInvalidateOrders();
+  return useMutation({
+    mutationFn: (request: CheckoutRequest) => api.checkoutComplete(request),
     onSuccess: invalidateOrders,
   });
 };
@@ -289,21 +402,60 @@ export const useRecordFulfillmentMutation = () => {
   });
 };
 
-// -------------------------------------------------------------------------
-// Invoices / Pricing / Settings / Profile
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Invoices
+// ---------------------------------------------------------------------------
 
-export const useInvoicesQuery = () =>
+export const useInvoicesQuery = (query?: { status?: string; page?: number }) =>
   useQuery({
-    queryKey: queryKeys.invoices,
-    queryFn: () => api.getInvoices({ pageSize: 100 }),
+    queryKey: queryKeys.invoices(query as Record<string, unknown>),
+    queryFn: () => api.getInvoices({ pageSize: 100, ...query }),
   });
+
+export const useInvoiceQuery = (id?: string) =>
+  useQuery({
+    queryKey: queryKeys.invoice(id ?? ""),
+    queryFn: () => api.getInvoice(id!),
+    enabled: !!id,
+  });
+
+export const useCreateInvoiceMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, dueDays }: { orderId: string; dueDays?: number }) =>
+      api.createInvoice(orderId, dueDays),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+};
+
+export const useConfirmInvoiceMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invoiceId: string) => api.confirmInvoice(invoiceId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+};
+
+export const useRecordInvoicePaymentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      invoiceId,
+      payload,
+    }: {
+      invoiceId: string;
+      payload: { amount: number; method?: string; note?: string };
+    }) => api.recordInvoicePayment(invoiceId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Pricelists
+// ---------------------------------------------------------------------------
 
 export const usePricelistsQuery = () =>
-  useQuery({
-    queryKey: queryKeys.pricelists,
-    queryFn: api.getPricelists,
-  });
+  useQuery({ queryKey: queryKeys.pricelists, queryFn: api.getPricelists });
 
 export const usePricelistQuery = (id?: string) =>
   useQuery({
@@ -337,11 +489,12 @@ export const useDeletePricelistMutation = () => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Quotation Templates
+// ---------------------------------------------------------------------------
+
 export const useQuotationTemplatesQuery = () =>
-  useQuery({
-    queryKey: queryKeys.quotationTemplates,
-    queryFn: api.getQuotationTemplates,
-  });
+  useQuery({ queryKey: queryKeys.quotationTemplates, queryFn: api.getQuotationTemplates });
 
 export const useQuotationTemplateQuery = (id?: string) =>
   useQuery({
@@ -375,30 +528,30 @@ export const useDeleteQuotationTemplateMutation = () => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Organization Settings
+// ---------------------------------------------------------------------------
+
 export const useSettingsQuery = () =>
-  useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
+  useQuery({ queryKey: queryKeys.settings, queryFn: api.getSettings });
 
 export const useSettingsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (settings: OrganizationSettings) => api.updateSettings(settings),
-    onSuccess: (settings) => queryClient.setQueryData(["settings"], settings),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.settings, settings),
   });
 };
 
-export const useProfileQuery = () =>
-  useQuery({ queryKey: ["profile"], queryFn: api.getProfile });
+// ---------------------------------------------------------------------------
+// Users (admin)
+// ---------------------------------------------------------------------------
 
-export const useProfileMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (profile: Partial<UserProfile>) => api.updateProfile(profile),
-    onSuccess: (profile) => queryClient.setQueryData(["profile"], profile),
+export const useUsersQuery = (query?: ListQuery & { role?: string; active?: boolean }) =>
+  useQuery({
+    queryKey: queryKeys.users(query as Record<string, unknown>),
+    queryFn: () => api.getUsers(query),
   });
-};
-
-export const useUsersQuery = (query?: ListQuery) =>
-  useQuery({ queryKey: ["users", query], queryFn: () => api.getUsers(query) });
 
 export const useUserQuery = (id: string) =>
   useQuery({ queryKey: ["users", id], queryFn: () => api.getUser(id) });
@@ -406,7 +559,7 @@ export const useUserQuery = (id: string) =>
 export const useCreateUserMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (user: Partial<UserProfile>) => api.createUser(user),
+    mutationFn: (user: Partial<UserProfile> & { password: string }) => api.createUser(user),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 };
@@ -420,5 +573,13 @@ export const useUpdateUserMutation = () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["users", id] });
     },
+  });
+};
+
+export const useDeactivateUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deactivateUser(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 };
