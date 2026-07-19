@@ -17,6 +17,8 @@ class Product(StringIdMixin, TimestampMixin, Base):
     __tablename__ = "products"
 
     category_id: Mapped[str] = mapped_column(ForeignKey("product_categories.id"), nullable=False)
+    # product_type: 'goods' (physical, trackable stock) | 'service' (no stock tracking)
+    product_type: Mapped[str] = mapped_column(String(32), default="goods", nullable=False)
     name: Mapped[str] = mapped_column(String(220), nullable=False)
     slug: Mapped[str] = mapped_column(String(240), unique=True, index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
@@ -26,6 +28,8 @@ class Product(StringIdMixin, TimestampMixin, Base):
     image_urls: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     attributes: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
     accessories: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
+    # Pricing
+    sales_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     deposit_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deposit_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     deposit_currency: Mapped[str] = mapped_column(String(3), default="INR", nullable=False)
@@ -34,6 +38,7 @@ class Product(StringIdMixin, TimestampMixin, Base):
     repair_status: Mapped[str] = mapped_column(String(32), default="ready", nullable=False)
     availability_status: Mapped[str] = mapped_column(String(32), default="available", nullable=False)
     rental_units: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    # Storefront visibility — admin/vendor only write; public catalog filters on active=True
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     category = relationship("ProductCategory", back_populates="products")

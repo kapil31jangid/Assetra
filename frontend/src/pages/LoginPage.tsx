@@ -94,9 +94,7 @@ export function LoginPage() {
 
       {login.isError ? (
         <Alert severity="error">
-          {login.error instanceof Error
-            ? login.error.message
-            : "Unable to sign in. Check the details and try again."}
+          Invalid User ID or Password.
         </Alert>
       ) : null}
 

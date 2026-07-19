@@ -264,7 +264,7 @@ export const mockApi = {
             order.customer.name,
             order.customer.email,
             ...order.lines.map((line) => line.productName),
-          ].some((value) => value.toLowerCase().includes(search))
+          ].some((value) => String(value ?? "").toLowerCase().includes(search))
         : true;
       const matchesCustomer = query?.customerId
         ? order.customer.id === query.customerId
@@ -295,7 +295,7 @@ export const mockApi = {
     const firstLine = request.lines[0];
     const product = mockProducts.find((item) => item.id === firstLine.productId);
     const variant = product?.variants.find(
-      (item) => item.id === firstLine.variantId,
+      (item: any) => item.id === firstLine.variantId,
     );
     const unitPrice = product ? getProductDailyRate(product) : { amount: 0, currency: "INR" as const };
     const rentalAmount =

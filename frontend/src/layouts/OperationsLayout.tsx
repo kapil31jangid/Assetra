@@ -1,31 +1,19 @@
-import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import MenuIcon from "@mui/icons-material/Menu";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import PriceChangeOutlinedIcon from "@mui/icons-material/PriceChangeOutlined";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import SearchIcon from "@mui/icons-material/Search";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
+import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Toolbar from "@mui/material/Toolbar";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState, type MouseEvent } from "react";
 import {
@@ -39,42 +27,13 @@ import logoUrl from "../assets/OnlyLogo.png";
 import { ROUTES } from "../constants/routes";
 import { useLogoutMutation, useSessionQuery } from "../services/queries";
 
-const drawerWidth = 264;
-
-const operationsNavItems = [
-  {
-    label: "Dashboard",
-    to: ROUTES.dashboard,
-    icon: <AssessmentOutlinedIcon />,
-  },
-  {
-    label: "Rental Orders",
-    to: ROUTES.orders,
-    icon: <ReceiptLongOutlinedIcon />,
-  },
-  {
-    label: "Quotations",
-    to: ROUTES.quotations,
-    icon: <DescriptionOutlinedIcon />,
-  },
-  {
-    label: "Invoices",
-    to: ROUTES.operationsInvoices,
-    icon: <DescriptionOutlinedIcon />,
-  },
-  {
-    label: "Products",
-    to: ROUTES.products,
-    icon: <Inventory2OutlinedIcon />,
-  },
-  { label: "Pricing", to: ROUTES.pricing, icon: <PriceChangeOutlinedIcon /> },
-  {
-    label: "Schedule",
-    to: ROUTES.schedule,
-    icon: <CalendarMonthOutlinedIcon />,
-  },
-  { label: "Reports", to: ROUTES.reports, icon: <TuneOutlinedIcon /> },
-  { label: "Settings", to: ROUTES.settings, icon: <SettingsOutlinedIcon /> },
+const navItems = [
+  { label: "Dashboard", path: ROUTES.dashboard },
+  { label: "Orders", path: ROUTES.orders },
+  { label: "Schedule", path: ROUTES.schedule },
+  { label: "Products", path: ROUTES.products },
+  { label: "Reports", path: ROUTES.reports },
+  { label: "Settings", path: ROUTES.settings },
 ];
 
 export function OperationsLayout() {
@@ -83,15 +42,15 @@ export function OperationsLayout() {
   const session = useSessionQuery();
   const logout = useLogoutMutation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const user = session.data?.data.user;
+  const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null);
 
-  const closeDrawer = () => setMobileOpen(false);
+  const user = session.data?.data?.user;
+
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const openUserMenu = (event: MouseEvent<HTMLElement>) =>
     setUserMenuAnchor(event.currentTarget);
   const closeUserMenu = () => setUserMenuAnchor(null);
+  
   const handleLogout = () => {
     closeUserMenu();
     logout.mutate(undefined, {
@@ -99,168 +58,178 @@ export function OperationsLayout() {
     });
   };
 
+  const handleSearch = (query: string) => {
+    // Stub for onSearch(query) callback
+    console.log("Search fired with:", query);
+  };
+
   const drawer = (
-    <Box sx={{ height: "100%" }}>
-      <Toolbar />
-      <Box sx={{ px: 2, py: 2 }}>
-        <Typography color="text.secondary" variant="caption">
-          Operations
-        </Typography>
+    <Box onClick={handleDrawerToggle} sx={{ textAlign: "center" }}>
+      <Box sx={{ my: 2, display: "flex", justifyContent: "center" }}>
+        <img alt="Assetra Logo" src={logoUrl} style={{ height: 40 }} />
       </Box>
-      <List dense sx={{ px: 1 }}>
-        {operationsNavItems.map((item) => (
-          <ListItemButton
-            component={RouterLink}
-            key={item.to}
-            onClick={closeDrawer}
-            selected={location.pathname === item.to}
-            sx={{ borderRadius: 1, mb: 0.25 }}
-            to={item.to}
-          >
-            <ListItemIcon sx={{ minWidth: 38 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
+      <List>
+        {navItems.map((item) => {
+          const isActive = location.pathname.startsWith(item.path);
+          return (
+            <ListItemButton
+              key={item.label}
+              component={RouterLink}
+              to={item.path}
+              selected={isActive}
+              sx={{
+                textAlign: "center",
+                color: isActive ? "primary.main" : "inherit",
+                fontWeight: isActive ? 700 : 400,
+              }}
+            >
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          );
+        })}
       </List>
     </Box>
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <AppBar
-        color="primary"
-        elevation={0}
-        position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
-      >
-        <Toolbar sx={{ gap: 1.5 }}>
-          <IconButton
-            aria-label="Open navigation"
-            color="inherit"
-            edge="start"
-            onClick={() => setMobileOpen(true)}
-            sx={{ display: { md: "none" } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box
-            alt="Assetra"
-            component="img"
-            src={logoUrl}
-            sx={{ height: 34, objectFit: "contain", width: 34 }}
-          />
-          <Box sx={{ minWidth: 142 }}>
-            <Typography component="div" variant="h6">
-              Assetra
-            </Typography>
-            <Typography
-              sx={{ color: "primary.contrastText", opacity: 0.72 }}
-              variant="caption"
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <AppBar component="nav" color="inherit" elevation={1} position="sticky">
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {/* Mobile Hamburger Menu */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { sm: "none" } }}
             >
-              Operations Workspace
-            </Typography>
-          </Box>
-          <TextField
-            placeholder="Search orders, products, customers"
-            size="small"
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{
-              bgcolor: "background.paper",
-              borderRadius: 1,
-              display: { xs: "none", lg: "block" },
-              maxWidth: 420,
-              ml: 2,
-              width: "32vw",
-            }}
-          />
-          <Box sx={{ flexGrow: 1 }} />
-          <Tooltip title="Notifications">
-            <IconButton color="inherit">
-              <Badge color="secondary" variant="dot">
-                <NotificationsNoneOutlinedIcon />
-              </Badge>
+              <MenuIcon />
             </IconButton>
-          </Tooltip>
-          <Chip
-            label={user?.role ?? "mock"}
-            size="small"
-            sx={{
-              bgcolor: "rgba(255,255,255,0.14)",
-              color: "primary.contrastText",
-              display: { xs: "none", sm: "inline-flex" },
-              textTransform: "capitalize",
-            }}
-          />
-          <Tooltip title="User menu">
-            <IconButton color="inherit" onClick={openUserMenu}>
-              <Avatar sx={{ height: 32, width: 32 }}>
-                {user?.name?.charAt(0) ?? "A"}
+
+            {/* Logo */}
+            <Box
+              component={RouterLink}
+              to={ROUTES.orders}
+              sx={{
+                display: { xs: "none", sm: "flex" },
+                alignItems: "center",
+                textDecoration: "none",
+                color: "inherit",
+                mr: 4,
+              }}
+            >
+              <img alt="Assetra" src={logoUrl} style={{ height: 40, marginRight: 8 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Assetra
+              </Typography>
+            </Box>
+
+            {/* Desktop Nav Items */}
+            <Box sx={{ display: { xs: "none", sm: "flex" }, gap: 1 }}>
+              {navItems.map((item) => {
+                const isActive = location.pathname.startsWith(item.path);
+                return (
+                  <Button
+                    key={item.label}
+                    component={RouterLink}
+                    to={item.path}
+                    sx={{
+                      color: isActive ? "primary.main" : "text.secondary",
+                      fontWeight: isActive ? 700 : 500,
+                      borderBottom: isActive ? "2px solid" : "2px solid transparent",
+                      borderColor: isActive ? "primary.main" : "transparent",
+                      borderRadius: 0,
+                      px: 2,
+                      py: 2.5,
+                      "&:hover": {
+                        backgroundColor: "transparent",
+                        color: "primary.main",
+                      },
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Search Bar */}
+            <TextField
+              placeholder="Search..."
+              size="small"
+              onChange={(e) => handleSearch(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: 1,
+                display: { xs: "none", md: "block" },
+                width: 250,
+              }}
+            />
+            
+            {/* Profile Dropdown */}
+            <IconButton onClick={openUserMenu} sx={{ p: 0 }}>
+              <Avatar alt={user?.name ?? "User"} src="/placeholder-avatar.jpg">
+                {user?.name?.charAt(0) ?? "U"}
               </Avatar>
             </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={userMenuAnchor}
-            onClose={closeUserMenu}
-            open={Boolean(userMenuAnchor)}
-          >
-            <MenuItem disabled>{user?.email ?? "admin@assetra.local"}</MenuItem>
-            <MenuItem onClick={closeUserMenu}>Profile</MenuItem>
-            <MenuItem disabled={logout.isPending} onClick={handleLogout}>
-              Logout
-            </MenuItem>
-          </Menu>
+            <Menu
+              anchorEl={userMenuAnchor}
+              open={Boolean(userMenuAnchor)}
+              onClose={closeUserMenu}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              <MenuItem disabled sx={{ opacity: "1 !important" }}>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {user?.name ?? "Admin"}
+                </Typography>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  closeUserMenu();
+                  navigate(ROUTES.settings);
+                }}
+              >
+                Profile
+              </MenuItem>
+              <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        sx={{ flexShrink: { md: 0 }, width: { md: drawerWidth } }}
-      >
+      {/* Mobile Drawer */}
+      <nav>
         <Drawer
-          ModalProps={{ keepMounted: true }}
-          onClose={closeDrawer}
-          open={mobileOpen}
-          sx={{
-            display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": { width: drawerWidth },
-          }}
           variant="temporary"
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          open
-          sx={{
-            display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": {
-              bgcolor: "background.paper",
-              borderRightColor: "divider",
-              width: drawerWidth,
-            },
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
           }}
-          variant="permanent"
+          sx={{
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+          }}
         >
           {drawer}
         </Drawer>
-      </Box>
+      </nav>
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          minWidth: 0,
-          p: { xs: 2, md: 3 },
-        }}
-      >
-        <Toolbar />
+      {/* Main Content Area */}
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, bgcolor: "background.default" }}>
         <Outlet />
       </Box>
     </Box>

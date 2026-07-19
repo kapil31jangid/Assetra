@@ -135,12 +135,11 @@ export interface ProductCategory {
 
 export interface ProductAttributeValue {
   id: Id;
-  label: string;
-  value?: string;
-  colorHex?: string;
+  value: string;
+  extraPrice?: number;
 }
 
-export type ProductAttributeDisplayType = "select" | "color" | "text";
+export type ProductAttributeDisplayType = "radio" | "pills" | "checkbox" | "image";
 
 export interface ProductAttribute {
   id: Id;
@@ -190,48 +189,57 @@ export interface AvailabilityWindow {
   status: ProductAvailabilityStatus;
 }
 
-export interface Product {
-  id: Id;
-  name: string;
-  slug: string;
-  description?: string;
-  category: ProductCategory;
-  brand?: string;
-  colors?: string[];
-  tags: string[];
-  imageUrls: string[];
-  attributes: ProductAttribute[];
-  variants: ProductVariant[];
-  accessories: Accessory[];
-  depositPolicy: DepositPolicy;
-  repairStatus: ProductRepairStatus;
-  stock: StockSummary;
-  availabilityStatus: ProductAvailabilityStatus;
-  availability?: AvailabilityWindow[];
-  rentalUnits: RentalPeriodUnit[];
-  active: boolean;
+export interface ProductAttributeReference {
+  attributeId: Id;
+  valueIds: Id[];
 }
 
-export type PricingRuleKind = "fixed_price" | "discount";
+export interface RentalSettings {
+  periodicity: "hours" | "day" | "week" | "monthly";
+  pickupTime?: string; // e.g. "10:00"
+  returnTime?: string; // e.g. "19:00"
+  lateFee?: number;
+  gracePeriod?: string; // e.g. "2:00"
+}
+
+export interface ProductDeposit {
+  required: boolean;
+  amount?: number;
+}
+
+export interface Product {
+  /** Compatibility fields used by the catalog/operations screens while API payloads are normalized. */
+  [key: string]: any;
+  id: Id;
+  name: string;
+  image?: string;
+  type: "goods" | "service";
+  qtyOnHand?: number;
+  salesPrice: number;
+  costPrice: number;
+  published: boolean;
+  attributes: ProductAttributeReference[];
+  rentalSettings: RentalSettings;
+  deposit: ProductDeposit;
+}
+
+export type PricingRuleKind = "discount" | "fixed";
 
 export interface PricingRule {
   id: Id;
-  periodUnit: RentalPeriodUnit;
-  kind: PricingRuleKind;
-  fixedPrice?: Money;
-  discountPercent?: number;
-  minimumQuantity: number;
-  validFrom?: IsoDate;
-  validTo?: IsoDate;
+  appliesTo: "all" | Id[];
+  priceType: PricingRuleKind;
+  value: number;
+  minQty: number;
+  validityStart?: string;
+  validityEnd?: string;
   selectable: boolean;
 }
 
 export interface Pricelist {
   id: Id;
   name: string;
-  currency: CurrencyCode;
-  selectable: boolean;
-  active: boolean;
+  isDefault: boolean;
   rules: PricingRule[];
 }
 
@@ -256,6 +264,7 @@ export type RentalOrderStatus =
   | "draft"
   | "quotation"
   | "quotation_sent"
+  | "sale_order"
   | "confirmed"
   | "invoiced"
   | "reserved"
@@ -271,6 +280,7 @@ export const RENTAL_ORDER_STATUS_LABELS: Readonly<
   draft: "Draft",
   quotation: "Quotation",
   quotation_sent: "Quotation Sent",
+  sale_order: "Sale Order",
   confirmed: "Confirmed",
   invoiced: "Invoiced",
   reserved: "Reserved",
@@ -285,8 +295,9 @@ export const RENTAL_ORDER_STATUS_TRANSITIONS: Readonly<
   Record<RentalOrderStatus, readonly RentalOrderStatus[]>
 > = {
   draft: ["quotation", "cancelled"],
-  quotation: ["quotation_sent", "confirmed", "cancelled"],
-  quotation_sent: ["confirmed", "cancelled"],
+  quotation: ["quotation_sent", "sale_order", "confirmed", "cancelled"],
+  quotation_sent: ["sale_order", "confirmed", "cancelled"],
+  sale_order: ["invoiced", "reserved", "cancelled"],
   confirmed: ["invoiced", "reserved", "cancelled"],
   invoiced: ["reserved", "cancelled"],
   reserved: ["picked_up", "late_pickup", "cancelled"],
@@ -298,17 +309,23 @@ export const RENTAL_ORDER_STATUS_TRANSITIONS: Readonly<
 };
 
 export interface RentalOrderLine {
+  /** Compatibility fields for the legacy operations forms. */
+  [key: string]: any;
   id: Id;
   productId: Id;
-  variantId: Id;
-  productName: string;
-  variantName: string;
-  sku: string;
+  variantId?: Id;
+  productName?: string;
+  variantName?: string;
+  sku?: string;
   quantity: number;
-  rentalPeriod: RentalPeriod;
+  rentalPeriod?: RentalPeriod;
   unitPrice: Money;
   lineTotal: Money;
-  accessories: Accessory[];
+  accessories?: Accessory[];
+  unit?: string;
+  taxPercent?: number;
+  isNote?: boolean;
+  noteText?: string;
 }
 
 export type FulfillmentMode = "delivery" | "store_pickup";
@@ -374,8 +391,10 @@ export interface LateFee {
 }
 
 export interface RentalOrder {
+  [key: string]: any;
   id: Id;
   number: string;
+  ref?: string;
   customer: CustomerSummary;
   vendorId?: Id;
   status: RentalOrderStatus;
@@ -390,31 +409,71 @@ export interface RentalOrder {
   invoiceIds: Id[];
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
+  invoiceAddress?: string;
+  deliveryAddress?: string;
+  rentalStart?: string;
+  rentalEnd?: string;
+  pricelistId?: Id;
+  quotationTemplateId?: Id;
+  untaxedAmount?: number;
+  taxAmount?: number;
+  totalAmount?: number;
+  pickup?: {
+    confirmed_at: string;
+    checklist: Record<string, boolean>;
+    notes?: string;
+  };
+  return_data?: {
+    confirmed_at?: string;
+    actual_return_at: string;
+    product_conditions: Array<{ product_id: string; condition: "Good" | "Damaged" | "Missing"; notes?: string }>;
+    late_fee_applied: boolean;
+    late_fee_amount: number;
+    deposit_refund_amount: number;
+    additional_due: number;
+  };
 }
 
-export type InvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
+export type InvoiceStatus = "draft" | "posted" | "cancelled";
+export type PaymentStatus = "unpaid" | "partially_paid" | "paid";
 
 export interface InvoiceLine {
-  id: Id;
-  description: string;
-  quantity: number;
-  unitPrice: Money;
-  total: Money;
+  id?: Id;
+  product_id?: Id;
+  description?: string;
+  qty: number;
+  unit?: string;
+  unit_price: number;
+  tax_percent: number;
+  amount: number;
+}
+
+export interface InvoicePayment {
+  amount: number;
+  method: string;
+  date: string;
 }
 
 export interface Invoice {
   id: Id;
-  number: string;
-  orderId?: Id;
-  customer: CustomerSummary;
+  invoice_number?: string;
+  number?: string;
+  order_id?: Id;
+  customer_id?: Id;
+  customer?: CustomerSummary;
+  invoice_date?: string;
+  invoice_address?: string;
+  delivery_address?: string;
   status: InvoiceStatus;
+  payment_status: PaymentStatus;
   lines: InvoiceLine[];
-  subtotal: Money;
-  tax: Money;
-  total: Money;
+  untaxed_amount: number;
+  tax_amount: number;
+  total: number;
+  payments: InvoicePayment[];
   dueAt?: IsoDate;
   issuedAt?: IsoDateTime;
-  createdAt: IsoDateTime;
+  createdAt?: IsoDateTime;
 }
 
 export interface DashboardKpi {
@@ -439,4 +498,20 @@ export interface DashboardSummary {
   orderStatusCounts: Partial<Record<RentalOrderStatus, number>>;
   upcomingPickups: RentalOrder[];
   upcomingReturns: RentalOrder[];
+}
+
+export interface QuotationTemplateLine {
+  productId: Id;
+  quantity: number;
+  unit: string;
+}
+
+export interface QuotationTemplate {
+  id: Id;
+  name: string;
+  validityDays: number;
+  paymentTermsPercent: number;
+  lines: QuotationTemplateLine[];
+  header?: string;
+  footer?: string;
 }

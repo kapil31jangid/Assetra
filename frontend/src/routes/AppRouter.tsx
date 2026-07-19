@@ -11,6 +11,7 @@ import { ROUTES } from "../constants/routes";
 import { AuthLayout } from "../layouts/AuthLayout";
 import { CustomerPortalLayout } from "../layouts/CustomerPortalLayout";
 import { OperationsLayout } from "../layouts/OperationsLayout";
+import { AccountLayout } from "../layouts/AccountLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const CatalogPage = lazy(() =>
@@ -24,6 +25,11 @@ const CartPage = lazy(() =>
 const CheckoutPage = lazy(() =>
   import("../pages/CheckoutPage").then((module) => ({
     default: module.CheckoutPage,
+  })),
+);
+const PaymentPage = lazy(() =>
+  import("../pages/PaymentPage").then((module) => ({
+    default: module.PaymentPage,
   })),
 );
 const CheckoutSuccessPage = lazy(() =>
@@ -94,19 +100,24 @@ const QuotationsPage = lazy(() =>
     default: module.QuotationsPage,
   })),
 );
-const ReportsPage = lazy(() =>
-  import("../pages/ReportsPage").then((module) => ({
-    default: module.ReportsPage,
+const OperationsReportsPage = lazy(() =>
+  import("../pages/OperationsReportsPage").then((module) => ({
+    default: module.OperationsReportsPage,
   })),
 );
-const SchedulePage = lazy(() =>
-  import("../pages/SchedulePage").then((module) => ({
-    default: module.SchedulePage,
+const OperationsSchedulerPage = lazy(() =>
+  import("../pages/OperationsSchedulerPage").then((module) => ({
+    default: module.OperationsSchedulerPage,
   })),
 );
 const SettingsPage = lazy(() =>
   import("../pages/SettingsPage").then((module) => ({
     default: module.SettingsPage,
+  })),
+);
+const CustomerSettingsPage = lazy(() =>
+  import("../pages/CustomerSettingsPage").then((module) => ({
+    default: module.CustomerSettingsPage,
   })),
 );
 const SignupPage = lazy(() =>
@@ -149,8 +160,8 @@ export function AppRouter() {
               />
               <Route element={<ProductsPage />} path={ROUTES.products} />
               <Route element={<PricingPage />} path={ROUTES.pricing} />
-              <Route element={<SchedulePage />} path={ROUTES.schedule} />
-              <Route element={<ReportsPage />} path={ROUTES.reports} />
+              <Route element={<OperationsSchedulerPage />} path={ROUTES.schedule} />
+              <Route element={<OperationsReportsPage />} path={ROUTES.reports} />
               <Route element={<SettingsPage />} path={ROUTES.settings} />
             </Route>
           </Route>
@@ -165,20 +176,25 @@ export function AppRouter() {
               <Route element={<ProductDetailPage />} path={ROUTES.productDetail} />
               <Route element={<CartPage />} path={ROUTES.cart} />
               <Route element={<CheckoutPage />} path={ROUTES.checkout} />
+              <Route element={<PaymentPage />} path={ROUTES.checkoutPayment} />
               <Route
                 element={<CheckoutSuccessPage />}
                 path={ROUTES.checkoutSuccess}
-              />
-              <Route
-                element={<CustomerOrdersPage />}
-                path={ROUTES.customerOrders}
               />
               <Route
                 element={<CustomerInvoicesPage />}
                 path={ROUTES.customerInvoices}
               />
               <Route element={<WishlistPage />} path={ROUTES.wishlist} />
-              <Route element={<ProfilePage />} path={ROUTES.profile} />
+              
+              <Route element={<AccountLayout />}>
+                <Route
+                  element={<CustomerOrdersPage />}
+                  path={ROUTES.customerOrders}
+                />
+                <Route element={<ProfilePage />} path={ROUTES.profile} />
+                <Route element={<CustomerSettingsPage />} path={ROUTES.customerSettings} />
+              </Route>
             </Route>
           </Route>
 

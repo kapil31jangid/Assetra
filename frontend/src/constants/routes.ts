@@ -16,11 +16,13 @@ export const ROUTES = {
   productDetail: "/portal/catalog/:productId",
   cart: "/portal/cart",
   checkout: "/portal/checkout",
+  checkoutPayment: "/portal/checkout/payment",
   checkoutSuccess: "/portal/checkout/success",
   customerOrders: "/portal/orders",
   customerInvoices: "/portal/invoices",
   wishlist: "/portal/wishlist",
   profile: "/portal/profile",
+  customerSettings: "/portal/settings",
   notFound: "*",
 } as const;
 

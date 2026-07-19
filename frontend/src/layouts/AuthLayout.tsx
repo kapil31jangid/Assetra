@@ -2,9 +2,10 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
-import { Outlet } from "react-router-dom";
+import { Outlet, Link as RouterLink } from "react-router-dom";
 
 import logoUrl from "../assets/OnlyLogo.png";
+import { ROUTES } from "../constants/routes";
 
 export function AuthLayout() {
   return (
@@ -20,11 +21,17 @@ export function AuthLayout() {
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Box sx={{ alignItems: "center", display: "flex", gap: 1.5, mb: 3 }}>
             <Box
-              alt="Assetra"
-              component="img"
-              src={logoUrl}
-              sx={{ height: 44, objectFit: "contain", width: 44 }}
-            />
+              component={RouterLink}
+              to={ROUTES.login}
+              sx={{ display: "inline-flex", textDecoration: "none" }}
+            >
+              <Box
+                alt="Assetra"
+                component="img"
+                src={logoUrl}
+                sx={{ height: 44, objectFit: "contain", width: 44 }}
+              />
+            </Box>
             <Box>
               <Typography component="div" variant="h2">
                 Assetra
