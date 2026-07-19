@@ -41,7 +41,7 @@ export function ProductList() {
   if (productsQuery.isLoading) return <LoadingState />;
   if (productsQuery.isError) return <ErrorState />;
 
-  const products = productsQuery.data?.data.items || [];
+  const products = productsQuery.data?.data || [];
   const filteredProducts = products.filter((prod) =>
     prod.name.toLowerCase().includes(search.toLowerCase())
   );

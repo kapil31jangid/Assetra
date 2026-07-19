@@ -2,7 +2,7 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -59,6 +59,11 @@ const getOrderStage = (order: RentalOrder) => {
 };
 
 export function OrdersList({ orders, view, onSelectOrder }: OrdersListProps) {
+  const orderTotal = (order: RentalOrder) => {
+    const total = order.totalAmount ?? order.price?.total;
+    return typeof total === "object" ? total.amount : total ?? 0;
+  };
+
   if (view === "list") {
     return (
       <Card>
@@ -85,7 +90,7 @@ export function OrdersList({ orders, view, onSelectOrder }: OrdersListProps) {
                 <TableCell>{order.customer?.name}</TableCell>
                 <TableCell>{order.rentalStart || order.schedule?.scheduledPickupAt}</TableCell>
                 <TableCell>{order.rentalEnd || order.schedule?.scheduledReturnAt}</TableCell>
-                <TableCell>{formatMoney({ amount: order.totalAmount || order.price?.total || 0, currency: "USD" })}</TableCell>
+                <TableCell>{formatMoney({ amount: orderTotal(order), currency: "USD" })}</TableCell>
                 <TableCell>
                   <Chip
                     label={getStatusLabel(order.status)}
@@ -146,7 +151,7 @@ export function OrdersList({ orders, view, onSelectOrder }: OrdersListProps) {
                       {order.customer?.name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {formatMoney({ amount: order.totalAmount || order.price?.total || 0, currency: "USD" })}
+                      {formatMoney({ amount: orderTotal(order), currency: "USD" })}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">
                       {order.rentalStart} → {order.rentalEnd}

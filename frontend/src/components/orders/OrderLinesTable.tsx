@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -45,7 +45,7 @@ export function OrderLinesTable({ lines, onChange, products }: OrderLinesTablePr
         tax_percent: 0,
         amount: 0,
         isNote: false,
-      } as RentalOrderLine,
+      } as unknown as RentalOrderLine,
     ]);
   };
 
@@ -60,7 +60,7 @@ export function OrderLinesTable({ lines, onChange, products }: OrderLinesTablePr
         amount: 0,
         isNote: true,
         noteText: "",
-      } as RentalOrderLine,
+      } as unknown as RentalOrderLine,
     ]);
   };
 
@@ -125,8 +125,9 @@ export function OrderLinesTable({ lines, onChange, products }: OrderLinesTablePr
                       fullWidth
                       size="small"
                       type="number"
+                      inputProps={{ min: 0, step: 1 }}
                       value={line.qty}
-                      onChange={(e) => handleLineChange(index, { qty: Number(e.target.value) })}
+                      onChange={(e) => handleLineChange(index, { qty: Math.max(0, Number(e.target.value) || 0) })}
                       variant="standard"
                     />
                   </TableCell>
@@ -144,8 +145,9 @@ export function OrderLinesTable({ lines, onChange, products }: OrderLinesTablePr
                       fullWidth
                       size="small"
                       type="number"
+                      inputProps={{ min: 0, step: 0.01 }}
                       value={line.unit_price}
-                      onChange={(e) => handleLineChange(index, { unit_price: Number(e.target.value) })}
+                      onChange={(e) => handleLineChange(index, { unit_price: Math.max(0, Number(e.target.value) || 0) })}
                       variant="standard"
                     />
                   </TableCell>
@@ -154,8 +156,9 @@ export function OrderLinesTable({ lines, onChange, products }: OrderLinesTablePr
                       fullWidth
                       size="small"
                       type="number"
+                      inputProps={{ min: 0, step: 0.01 }}
                       value={line.tax_percent || 0}
-                      onChange={(e) => handleLineChange(index, { tax_percent: Number(e.target.value) })}
+                      onChange={(e) => handleLineChange(index, { tax_percent: Math.max(0, Number(e.target.value) || 0) })}
                       variant="standard"
                     />
                   </TableCell>

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.responses import envelope, paginated_envelope
+from app.api.responses import envelope
 from app.core.database import get_db_session
 from app.core.ids import new_id
 from app.core.security import require_roles

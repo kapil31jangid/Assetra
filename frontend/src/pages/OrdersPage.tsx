@@ -3,10 +3,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
+import Alert from "@mui/material/Alert";
+import dayjs from "dayjs";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -17,21 +19,31 @@ import { OrdersList } from "../components/orders/OrdersList";
 import { OrderForm } from "../components/orders/OrderForm";
 
 import { useOrdersQuery, useProductsQuery, useCreateOrderMutation } from "../services/queries";
+import type { CreateRentalOrderRequest } from "../services/api-contract";
 import type { RentalOrder } from "../types";
 
 export function OrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"All" | "Today" | "Pickup" | "Return" | "Late">("All");
+  const initialFilter = searchParams.get("filter");
+  const [activeFilter, setActiveFilter] = useState<"All" | "Today" | "Pickup" | "Return" | "Late" | "Active">(
+    initialFilter === "late" ? "Late" : initialFilter === "pickup" ? "Pickup" : initialFilter === "today" ? "Today" : initialFilter === "active" ? "Active" : "All",
+  );
   
   const [editingOrder, setEditingOrder] = useState<RentalOrder | "new" | null>(null);
   
   const ordersQuery = useOrdersQuery({ pageSize: 100 });
   const productsQuery = useProductsQuery({ pageSize: 100 });
   const createOrder = useCreateOrderMutation();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
+    const filter = searchParams.get("filter");
+    if (filter === "late") setActiveFilter("Late");
+    else if (filter === "pickup") setActiveFilter("Pickup");
+    else if (filter === "today") setActiveFilter("Today");
+    else if (filter === "active") setActiveFilter("Active");
     if (ordersQuery.isSuccess && !editingOrder) {
       const orderId = searchParams.get("id");
       const isNew = searchParams.get("new");
@@ -47,15 +59,44 @@ export function OrdersPage() {
     }
   }, [searchParams, ordersQuery.isSuccess]);
 
-  const handleSave = (orderData: Partial<RentalOrder>) => {
-    // Basic mock save implementation
+  const handleSave = async (orderData: Partial<RentalOrder>) => {
+    setSaveError(null);
     if (editingOrder === "new") {
-      console.log("Saving new order", orderData);
-    } else {
-      console.log("Updating order", orderData);
+      const start = orderData.rentalStart || dayjs().add(1, "day").hour(10).minute(0).format();
+      const end = orderData.rentalEnd || dayjs(start).add(1, "day").format();
+      const lines = (orderData.lines ?? []).flatMap((line: any) => {
+        const productId = line.productId || line.product_id;
+        const product = productsQuery.data?.data.find((item) => item.id === productId);
+        const variantId = line.variantId || product?.variants?.[0]?.id;
+        return productId && variantId ? [{
+          productId,
+          variantId,
+          quantity: Math.max(0, Number(line.quantity ?? line.qty ?? 1)),
+          rentalPeriod: { startsAt: start, endsAt: end, unit: "daily" as const, quantity: 1, timezone: "Asia/Kolkata" },
+        }] : [];
+      });
+      if (!lines.length) {
+        setSaveError("Add at least one product with an available variant.");
+        return;
+      }
+      try {
+        await createOrder.mutateAsync({
+          customerId: orderData.customer?.id || "",
+          lines,
+          schedule: {
+            mode: "store_pickup",
+            scheduledPickupAt: start,
+            scheduledReturnAt: end,
+            gracePeriodMinutes: 0,
+          },
+          pricelistId: orderData.pricelistId,
+        } satisfies CreateRentalOrderRequest);
+        setEditingOrder(null);
+        setSearchParams({});
+      } catch {
+        setSaveError("Order could not be saved. Check the customer, product, and rental dates.");
+      }
     }
-    setEditingOrder(null);
-    setSearchParams({});
   };
 
   if (ordersQuery.isLoading || productsQuery.isLoading) {
@@ -75,6 +116,19 @@ export function OrdersPage() {
              o.number?.toLowerCase().includes(search.toLowerCase()) ||
              o.customer?.name.toLowerCase().includes(search.toLowerCase())
     );
+  }
+
+  if (activeFilter !== "All") {
+    const today = dayjs().format("YYYY-MM-DD");
+    filteredOrders = filteredOrders.filter((order) => {
+      const pickup = order.rentalStart || order.schedule?.scheduledPickupAt || "";
+      const returned = order.rentalEnd || order.schedule?.scheduledReturnAt || "";
+      if (activeFilter === "Late") return ["late_pickup", "late_return"].includes(order.status);
+      if (activeFilter === "Active") return ["reserved", "picked_up", "late_pickup", "late_return"].includes(order.status);
+      if (activeFilter === "Pickup") return order.status === "reserved" || pickup.startsWith(today);
+      if (activeFilter === "Return") return order.status === "picked_up" || returned.startsWith(today);
+      return pickup.startsWith(today) || returned.startsWith(today);
+    });
   }
 
   if (editingOrder !== null) {
@@ -154,6 +208,7 @@ export function OrdersPage() {
         </CardContent>
       </Card>
 
+      {saveError && <Alert severity="error" sx={{ mb: 2 }}>{saveError}</Alert>}
       <OrdersList
         orders={filteredOrders}
         view={view}

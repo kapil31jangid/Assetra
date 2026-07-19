@@ -62,8 +62,9 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ProfileRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=160)
+    name: str | None = Field(default=None, min_length=1, max_length=160)
     phone: str | None = Field(default=None, max_length=32)
+    avatarUrl: str | None = Field(default=None, max_length=500)
 
 
 class AddressRequest(BaseModel):
@@ -216,8 +217,12 @@ async def update_profile(
     user = await db.get(User, claims["sub"])
     if user is None:
         raise HTTPException(status_code=404, detail="User profile was not found")
-    user.name = request.name
-    user.phone = request.phone
+    if request.name is not None:
+        user.name = request.name
+    if request.phone is not None:
+        user.phone = request.phone
+    if request.avatarUrl is not None:
+        user.avatar_url = request.avatarUrl
     await db.commit()
     return envelope({
         "id": user.id,

@@ -406,7 +406,7 @@ export const useRecordFulfillmentMutation = () => {
 // Invoices
 // ---------------------------------------------------------------------------
 
-export const useInvoicesQuery = (query?: { status?: string; page?: number }) =>
+export const useInvoicesQuery = (query?: { status?: string; page?: number; pageSize?: number }) =>
   useQuery({
     queryKey: queryKeys.invoices(query as Record<string, unknown>),
     queryFn: () => api.getInvoices({ pageSize: 100, ...query }),

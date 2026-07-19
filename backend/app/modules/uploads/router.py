@@ -17,7 +17,7 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE_MB = 10
 
 
-@router.post("/images", dependencies=[Depends(require_roles("admin", "vendor"))])
+@router.post("/images", dependencies=[Depends(require_roles("admin", "vendor", "customer"))])
 async def upload_image(file: UploadFile = File(...)) -> dict:
     """Upload a product image and return its public URL."""
     content_type = file.content_type or ""

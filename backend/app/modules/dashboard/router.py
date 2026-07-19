@@ -3,7 +3,6 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.responses import envelope
 from app.core.database import get_db_session
@@ -35,6 +34,15 @@ def _build_kpis(orders: list, from_date: str, to_date: str) -> dict:
         for o in orders
     )
 
+    upcoming_pickups = [
+        order for order in orders
+        if order["status"] in {"reserved", "late_pickup"}
+    ]
+    upcoming_returns = [
+        order for order in orders
+        if order["status"] in {"picked_up", "late_return"}
+    ]
+
     return {
         "period": {"from": from_date, "to": to_date},
         "kpis": [
@@ -46,6 +54,8 @@ def _build_kpis(orders: list, from_date: str, to_date: str) -> dict:
             {"key": "late_fee_collected", "label": "Late Fees Collected", "value": late_fees, "formattedValue": f"₹{late_fees:,.0f}", "currency": "INR", "trend": "flat"},
         ],
         "orderStatusCounts": counts,
+        "upcomingPickups": upcoming_pickups,
+        "upcomingReturns": upcoming_returns,
     }
 
 

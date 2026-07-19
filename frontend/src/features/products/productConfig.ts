@@ -50,7 +50,7 @@ const defaultProductConfig = (product: Product): ProductConfig => ({
 });
 
 const defaultPricingConfig = (product: Product): PricingConfig[] =>
-  product.rentalUnits.map((periodUnit) => ({
+  product.rentalUnits.map((periodUnit: string) => ({
     id: `price_${product.id}_${periodUnit}`,
     productId: product.id,
     periodUnit,

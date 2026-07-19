@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
@@ -62,7 +62,7 @@ export function QuotationTemplateForm({ templateId, isNew, onClose }: QuotationT
   const [tab, setTab] = useState(0);
   const [builderOpen, setBuilderOpen] = useState(false);
 
-  const allProducts = productsQuery.data?.data.items || [];
+  const allProducts = productsQuery.data?.data || [];
 
   useEffect(() => {
     if (!isNew && templateQuery.data?.data) {
@@ -171,6 +171,7 @@ export function QuotationTemplateForm({ templateId, isNew, onClose }: QuotationT
                 <TextField
                   label="Quotation Validity"
                   type="number"
+                  inputProps={{ min: 0, step: 1 }}
                   fullWidth
                   value={template.validityDays}
                   onChange={(e) => setTemplate({ ...template, validityDays: Number(e.target.value) })}
@@ -181,6 +182,7 @@ export function QuotationTemplateForm({ templateId, isNew, onClose }: QuotationT
                 <TextField
                   label="Payment Terms"
                   type="number"
+                  inputProps={{ min: 0, max: 100, step: 1 }}
                   fullWidth
                   value={template.paymentTermsPercent}
                   onChange={(e) => setTemplate({ ...template, paymentTermsPercent: Number(e.target.value) })}
@@ -243,6 +245,7 @@ export function QuotationTemplateForm({ templateId, isNew, onClose }: QuotationT
                       <TextField
                         size="small"
                         type="number"
+                        inputProps={{ min: 0, step: 1 }}
                         fullWidth
                         value={line.quantity}
                         onChange={(e) => handleLineChange(index, "quantity", Number(e.target.value))}

@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
@@ -180,8 +180,9 @@ export function AttributeForm({ attribute, isNew, onClose }: AttributeFormProps)
                           size="small"
                           fullWidth
                           type="number"
+                          inputProps={{ min: 0, step: 0.01 }}
                           value={v.extraPrice ?? 0}
-                          onChange={(e) => handleChangeLine(v.id, "extraPrice", Number(e.target.value))}
+                          onChange={(e) => handleChangeLine(v.id, "extraPrice", Math.max(0, Number(e.target.value) || 0))}
                         />
                       </TableCell>
                       <TableCell align="right">

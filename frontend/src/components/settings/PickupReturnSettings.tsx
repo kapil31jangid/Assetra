@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -81,8 +81,9 @@ export function PickupReturnSettings() {
                 fullWidth
                 label="Default Late Fee Amount"
                 type="number"
+                inputProps={{ min: 0, step: 1 }}
                 value={settings.lateFeeAmount}
-                onChange={(e) => updateSettings("lateFeeAmount", Number(e.target.value))}
+                onChange={(e) => updateSettings("lateFeeAmount", Math.max(0, Number(e.target.value) || 0))}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -90,8 +91,9 @@ export function PickupReturnSettings() {
                 fullWidth
                 label="Grace Period (Minutes)"
                 type="number"
+                inputProps={{ min: 0, step: 1 }}
                 value={settings.gracePeriodMinutes}
-                onChange={(e) => updateSettings("gracePeriodMinutes", Number(e.target.value))}
+                onChange={(e) => updateSettings("gracePeriodMinutes", Math.max(0, Number(e.target.value) || 0))}
                 helperText="Padding/Grace time before late fee applies"
               />
             </Grid>

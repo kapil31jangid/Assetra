@@ -7,7 +7,7 @@ Returns aggregated financial and operational metrics for a date range.
 Vendor-scoped automatically: admin sees all; vendor sees only their own orders.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -34,13 +34,15 @@ async def reports_summary(
 ) -> dict:
     f = date.fromisoformat(from_date) if from_date else date.today().replace(day=1)
     t = date.fromisoformat(to_date) if to_date else date.today()
+    from_dt = datetime.combine(f, time.min, tzinfo=UTC)
+    to_dt = datetime.combine(t, time.max, tzinfo=UTC)
 
     # ── Orders query ──
     order_query = (
         select(RentalOrder)
         .where(
-            RentalOrder.created_at >= f.isoformat(),
-            RentalOrder.created_at <= f"{t.isoformat()}T23:59:59",
+            RentalOrder.created_at >= from_dt,
+            RentalOrder.created_at <= to_dt,
         )
         .order_by(RentalOrder.created_at.desc())
     )

@@ -12,7 +12,7 @@ from app.core.ids import new_id
 from app.core.models import Organization
 from app.core.security import current_claims, require_roles
 from app.modules.fulfillment.models import FulfillmentEvent
-from app.modules.invoices.models import Invoice, InvoiceLine
+from app.modules.invoices.models import InvoiceLine
 from app.modules.payments.models import LateFeeAssessment
 from app.modules.payments.service import calculate_late_fee
 from app.modules.catalog.models import ProductVariant

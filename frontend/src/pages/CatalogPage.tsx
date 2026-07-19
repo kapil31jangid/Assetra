@@ -7,7 +7,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
@@ -60,7 +60,11 @@ export function CatalogPage() {
   const query: ProductListQuery = {
     pageSize: 24, // Let's say we handle paging manually for now
     search: currentSearch || undefined,
-    // we use manual filtering for complex arrays since our mock API might not support it perfectly
+    brand: currentBrands.length === 1 ? currentBrands[0] : undefined,
+    color: currentColor || undefined,
+    rentalUnit: currentUnit === "hour" ? "hourly" : currentUnit === "day" ? "daily" : currentUnit === "week" ? "weekly" : currentUnit === "month" ? "monthly" : undefined,
+    minPrice: priceRange[0] || undefined,
+    maxPrice: priceRange[1] < 5000 ? priceRange[1] : undefined,
   };
   const productsReq = useProductsQuery(query);
 
@@ -120,11 +124,11 @@ export function CatalogPage() {
     filteredProducts = filteredProducts.filter(p => p.colors?.includes(currentColor));
   }
   if (currentUnit) {
-    // Assuming simple mapping for periodicity mock
-    filteredProducts = filteredProducts.filter(p => p.rentalPeriodicity === currentUnit || p.pricingModel === "flat_rate");
+    const rentalUnit = currentUnit === "hour" ? "hourly" : currentUnit === "day" ? "daily" : currentUnit === "week" ? "weekly" : currentUnit === "month" ? "monthly" : currentUnit;
+    filteredProducts = filteredProducts.filter(p => p.rentalUnits?.includes(rentalUnit));
   }
   filteredProducts = filteredProducts.filter(p => {
-    const rate = p.basePrice?.amount || getProductDailyRate(p).amount;
+    const rate = getProductDailyRate(p).amount;
     return rate >= priceRange[0] && rate <= priceRange[1];
   });
 
@@ -147,8 +151,16 @@ export function CatalogPage() {
               <Button size="small" onClick={resetFilters} sx={{ textTransform: "none" }}>Clear All</Button>
             </Stack>
 
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>Brand</Typography>
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search products"
+              value={currentSearch}
+              onChange={(event) => updateFilter("search", event.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>Brand</Typography>
               <Stack spacing={0}>
                 {brandOptions.map(brand => (
                   <FormControlLabel

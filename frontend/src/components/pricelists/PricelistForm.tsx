@@ -5,7 +5,7 @@ import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
 import Drawer from "@mui/material/Drawer";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Radio from "@mui/material/Radio";
@@ -62,7 +62,7 @@ export function PricelistForm({ pricelistId, isNew, onClose }: PricelistFormProp
   const [activeRule, setActiveRule] = useState<Partial<PricingRule>>({});
   const [ruleError, setRuleError] = useState<string | null>(null);
 
-  const allProducts = productsQuery.data?.data.items || [];
+  const allProducts = productsQuery.data?.data || [];
 
   useEffect(() => {
     if (!isNew && pricelistQuery.data?.data) {

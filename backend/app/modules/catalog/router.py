@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.api.responses import envelope, paginated_envelope
 from app.core.database import get_db_session
 from app.core.ids import new_id
-from app.core.security import current_claims, require_roles
+from app.core.security import require_roles
 from app.modules.catalog.models import Product, ProductCategory, ProductVariant
 from app.modules.catalog.service import product_payload
 
@@ -117,6 +117,8 @@ async def list_products(
     brand: str | None = None,
     color: str | None = None,
     rentalUnit: Literal["hourly", "daily", "nightly", "weekly", "monthly"] | None = None,
+    minPrice: float | None = None,
+    maxPrice: float | None = None,
     includeInactive: bool = False,
     db: AsyncSession = Depends(get_db_session),
     # claims is optional — public catalog works unauthenticated; role used only for admin override
@@ -140,6 +142,13 @@ async def list_products(
         products = [p for p in products if color in p.colors]
     if rentalUnit:
         products = [p for p in products if rentalUnit in p.rental_units]
+    if minPrice is not None:
+        # Some legacy seeded products have no base sales price and are priced
+        # through the active pricelist; leave those for the frontend's
+        # resolved-price filter instead of treating them as zero-priced.
+        products = [p for p in products if not float(p.sales_price) or float(p.sales_price) >= minPrice]
+    if maxPrice is not None:
+        products = [p for p in products if not float(p.sales_price) or float(p.sales_price) <= maxPrice]
     return paginated_envelope([product_payload(p) for p in products], page=page, page_size=pageSize)
 
 
@@ -158,9 +167,9 @@ class VariantRequest(BaseModel):
 
 
 class ProductCreateRequest(BaseModel):
-    categoryId: str
+    categoryId: str | None = None
     name: str = Field(min_length=1, max_length=220)
-    slug: str = Field(min_length=1, max_length=240)
+    slug: str | None = Field(default=None, min_length=1, max_length=240)
     description: str | None = None
     brand: str | None = None
     imageUrls: list[str] = []
@@ -174,6 +183,11 @@ class ProductCreateRequest(BaseModel):
     depositRefundable: bool = True
     depositRefundWindowDays: int | None = None
     variants: list[VariantRequest] = []
+    # Legacy admin form fields retained for backwards-compatible clients.
+    type: str | None = None
+    qtyOnHand: int | None = Field(default=None, ge=0)
+    published: bool | None = None
+    image: str | None = None
 
 
 class ProductUpdateRequest(BaseModel):
@@ -195,26 +209,33 @@ class ProductUpdateRequest(BaseModel):
     active: bool | None = None
     repairStatus: str | None = None
     availabilityStatus: str | None = None
+    type: str | None = None
+    qtyOnHand: int | None = Field(default=None, ge=0)
+    published: bool | None = None
+    image: str | None = None
 
 
 @router.post("", dependencies=[Depends(require_roles("admin", "vendor"))])
 async def create_product(request: ProductCreateRequest, db: AsyncSession = Depends(get_db_session)) -> dict:
-    category = await db.get(ProductCategory, request.categoryId)
+    category = await db.get(ProductCategory, request.categoryId) if request.categoryId else await db.scalar(
+        select(ProductCategory).order_by(ProductCategory.name).limit(1)
+    )
     if category is None:
-        raise HTTPException(status_code=400, detail="Product category does not exist.")
-    existing_slug = await db.scalar(select(Product).where(Product.slug == request.slug))
+        raise HTTPException(status_code=400, detail="Create at least one product category first.")
+    slug = request.slug or request.name.lower().replace(" ", "-")
+    existing_slug = await db.scalar(select(Product).where(Product.slug == slug))
     if existing_slug:
         raise HTTPException(status_code=409, detail="A product with this slug already exists.")
 
     product = Product(
         id=new_id("prd"),
         category_id=category.id,
-        product_type=request.productType,
+        product_type=request.productType if request.productType != "goods" or request.type is None else request.type,
         name=request.name,
-        slug=request.slug,
+        slug=slug,
         description=request.description,
         brand=request.brand,
-        image_urls=request.imageUrls,
+        image_urls=request.imageUrls or ([request.image] if request.image else []),
         tags=request.tags,
         colors=request.colors,
         attributes=[],
@@ -228,7 +249,7 @@ async def create_product(request: ProductCreateRequest, db: AsyncSession = Depen
         deposit_refund_window_days=request.depositRefundWindowDays,
         repair_status="ready",
         availability_status="available",
-        active=True,
+        active=request.published if request.published is not None else True,
     )
 
     if request.variants:
@@ -256,8 +277,8 @@ async def create_product(request: ProductCreateRequest, db: AsyncSession = Depen
                 name=request.name,
                 sku=new_id("SKU").upper(),
                 attribute_value_ids=[],
-                stock_total=0,
-                stock_available=0,
+                stock_total=request.qtyOnHand or 0,
+                stock_available=request.qtyOnHand or 0,
                 stock_reserved=0,
                 stock_in_use=0,
                 stock_under_repair=0,
@@ -285,12 +306,16 @@ async def update_product(
         product.category_id = request.categoryId
     if request.name is not None:
         product.name = request.name
+    if request.type is not None:
+        product.product_type = request.type
     if request.description is not None:
         product.description = request.description
     if request.brand is not None:
         product.brand = request.brand
     if request.imageUrls is not None:
         product.image_urls = request.imageUrls
+    elif request.image is not None:
+        product.image_urls = [request.image]
     if request.tags is not None:
         product.tags = request.tags
     if request.colors is not None:
@@ -299,6 +324,11 @@ async def update_product(
         product.rental_units = request.rentalUnits
     if request.salesPrice is not None:
         product.sales_price = request.salesPrice
+    if request.qtyOnHand is not None:
+        for variant in product.variants:
+            delta = request.qtyOnHand - variant.stock_total
+            variant.stock_total = request.qtyOnHand
+            variant.stock_available = max(0, variant.stock_available + delta)
     if request.productType is not None:
         product.product_type = request.productType
     if request.depositAmount is not None:
@@ -311,6 +341,8 @@ async def update_product(
         product.deposit_refund_window_days = request.depositRefundWindowDays
     if request.active is not None:
         product.active = request.active
+    if request.published is not None:
+        product.active = request.published
     if request.repairStatus is not None:
         product.repair_status = request.repairStatus
     if request.availabilityStatus is not None:

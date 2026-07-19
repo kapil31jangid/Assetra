@@ -90,7 +90,7 @@ export function PricingPage() {
                   </Typography>
                 </div>
                 <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
-                  {product.rentalUnits.map((unit) => (
+                  {product.rentalUnits.map((unit: string) => (
                     <Chip key={unit} label={unit} size="small" variant="outlined" />
                   ))}
                 </Stack>

@@ -37,7 +37,7 @@ export function UsersList() {
   if (usersQuery.isLoading) return <LoadingState />;
   if (usersQuery.isError) return <ErrorState />;
 
-  const users = usersQuery.data?.data.items || [];
+  const users = usersQuery.data?.data || [];
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(search.toLowerCase()) ||

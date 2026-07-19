@@ -12,7 +12,7 @@ from app.core.database import get_db_session
 from app.core.ids import new_id
 from app.core.security import current_claims, require_roles
 from app.modules.invoices.models import Invoice, InvoiceLine
-from app.modules.rentals.models import RentalOrder, RentalOrderLine
+from app.modules.rentals.models import RentalOrder
 
 router = APIRouter()
 

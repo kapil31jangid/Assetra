@@ -208,6 +208,8 @@ export interface ProductDeposit {
 }
 
 export interface Product {
+  /** Compatibility fields used by the catalog/operations screens while API payloads are normalized. */
+  [key: string]: any;
   id: Id;
   name: string;
   image?: string;
@@ -307,6 +309,8 @@ export const RENTAL_ORDER_STATUS_TRANSITIONS: Readonly<
 };
 
 export interface RentalOrderLine {
+  /** Compatibility fields for the legacy operations forms. */
+  [key: string]: any;
   id: Id;
   productId: Id;
   variantId?: Id;
@@ -387,6 +391,7 @@ export interface LateFee {
 }
 
 export interface RentalOrder {
+  [key: string]: any;
   id: Id;
   number: string;
   ref?: string;

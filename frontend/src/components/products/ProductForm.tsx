@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
@@ -32,8 +32,9 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Chip from "@mui/material/Chip";
 
-import { useSessionQuery, useAttributesQuery, useProductQuery, useCreateProductMutation, useUpdateProductMutation } from "../../services/queries";
+import { useSessionQuery, useAttributesQuery, useProductQuery, useCreateProductMutation, useUpdateProductMutation, useUploadImageMutation } from "../../services/queries";
 import type { Product, ProductAttributeReference, RentalSettings, ProductDeposit } from "../../types";
 import { LoadingState } from "../LoadingState";
 import { ErrorState } from "../ErrorState";
@@ -68,6 +69,7 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
   const productQuery = useProductQuery(productId || undefined);
   const createMutation = useCreateProductMutation();
   const updateMutation = useUpdateProductMutation();
+  const uploadMutation = useUploadImageMutation();
 
   const [activeTab, setActiveTab] = useState(0);
   const [product, setProduct] = useState<Omit<Product, "id">>(defaultProduct);
@@ -140,7 +142,7 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
   };
 
   const handleRemoveAttributeLine = (index: number) => {
-    const newAttrs = product.attributes.filter((_, i) => i !== index);
+    const newAttrs = product.attributes.filter((_attr: ProductAttributeReference, i: number) => i !== index);
     setProduct({ ...product, attributes: newAttrs });
   };
 
@@ -188,7 +190,23 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
             <Avatar variant="rounded" sx={{ width: 120, height: 120, mb: 1 }} src={product.image || ""} />
             <Button variant="outlined" size="small" component="label">
               Upload Image
-              <input type="file" hidden accept="image/*" />
+              <input
+                type="file"
+                hidden
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const response = await uploadMutation.mutateAsync(file);
+                    setProduct((current) => ({ ...current, image: response.data.url }));
+                  } catch {
+                    setError("Image upload failed. Please use a JPEG, PNG, WebP, or GIF under 10 MB.");
+                  } finally {
+                    event.target.value = "";
+                  }
+                }}
+              />
             </Button>
           </Grid>
         </Grid>
@@ -222,27 +240,30 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
                   <TextField
                     label="Quantity on Hand"
                     type="number"
+                    inputProps={{ min: 0, step: 1 }}
                     fullWidth
                     required
                     value={product.qtyOnHand}
-                    onChange={(e) => setProduct({ ...product, qtyOnHand: Number(e.target.value) })}
+                    onChange={(e) => setProduct({ ...product, qtyOnHand: Math.max(0, Number(e.target.value) || 0) })}
                   />
                 )}
                 <TextField
                   label="Sales Price ($)"
                   type="number"
+                  inputProps={{ min: 0, step: 0.01 }}
                   fullWidth
                   required
                   value={product.salesPrice}
-                  onChange={(e) => setProduct({ ...product, salesPrice: Number(e.target.value) })}
+                  onChange={(e) => setProduct({ ...product, salesPrice: Math.max(0, Number(e.target.value) || 0) })}
                 />
                 <TextField
                   label="Cost Price ($)"
                   type="number"
+                  inputProps={{ min: 0, step: 0.01 }}
                   fullWidth
                   required
                   value={product.costPrice}
-                  onChange={(e) => setProduct({ ...product, costPrice: Number(e.target.value) })}
+                  onChange={(e) => setProduct({ ...product, costPrice: Math.max(0, Number(e.target.value) || 0) })}
                 />
               </Stack>
             </Grid>
@@ -264,7 +285,7 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {product.attributes.map((attrRef, index) => {
+                  {(product.attributes as ProductAttributeReference[]).map((attrRef: ProductAttributeReference, index: number) => {
                     const selectedAttr = allAttributes.find((a) => a.id === attrRef.attributeId);
                     return (
                       <TableRow key={index}>
@@ -294,9 +315,9 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
                               handleValuesChange(index, typeof val === 'string' ? val.split(',') : val);
                             }}
                             input={<OutlinedInput />}
-                            renderValue={(selected) => (
+                            renderValue={(selected: string[]) => (
                               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                                {selected.map((value) => {
+                                {selected.map((value: string) => {
                                   const valObj = selectedAttr?.values.find((v) => v.id === value);
                                   return <Chip key={value} label={valObj?.value || value} size="small" />;
                                 })}
@@ -387,11 +408,12 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
                     <TextField
                       label="Late Fees ($)"
                       type="number"
+                      inputProps={{ min: 0, step: 0.01 }}
                       fullWidth
                       value={product.rentalSettings.lateFee ?? ""}
                       onChange={(e) => setProduct({
                         ...product,
-                        rentalSettings: { ...product.rentalSettings, lateFee: Number(e.target.value) }
+                        rentalSettings: { ...product.rentalSettings, lateFee: Math.max(0, Number(e.target.value) || 0) }
                       })}
                     />
                   </Grid>
@@ -433,13 +455,14 @@ export function ProductForm({ productId, isNew, onClose }: ProductFormProps) {
                 <TextField
                   label="Security Deposit Amount ($)"
                   type="number"
+                  inputProps={{ min: 0, step: 0.01 }}
                   fullWidth
                   required={product.deposit.required}
                   disabled={!product.deposit.required}
                   value={product.deposit.amount ?? ""}
                   onChange={(e) => setProduct({
                     ...product,
-                    deposit: { ...product.deposit, amount: Number(e.target.value) }
+                    deposit: { ...product.deposit, amount: Math.max(0, Number(e.target.value) || 0) }
                   })}
                 />
               </Stack>

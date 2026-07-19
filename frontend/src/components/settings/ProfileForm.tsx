@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/GridLegacy";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -15,7 +15,7 @@ import Avatar from "@mui/material/Avatar";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useProfileMutation, useUpdateUserMutation } from "../../services/queries";
+import { useProfileMutation, useUpdateUserMutation, useUploadImageMutation, useChangePasswordMutation } from "../../services/queries";
 import type { UserProfile } from "../../services/api";
 
 const profileSchema = z.object({
@@ -59,6 +59,8 @@ export function ProfileForm({
   const [activeTab, setActiveTab] = useState(0);
   const profileMutation = useProfileMutation();
   const updateUserMutation = useUpdateUserMutation();
+  const uploadMutation = useUploadImageMutation();
+  const passwordMutation = useChangePasswordMutation();
   const [saved, setSaved] = useState(false);
 
   const {
@@ -101,10 +103,10 @@ export function ProfileForm({
   };
 
   const onPasswordSubmit = (values: PasswordFormValues) => {
-    // Mocking password change since we don't have an endpoint for it yet
-    console.log("Password change requested", values);
-    setSaved(true);
-    resetPassword();
+    passwordMutation.mutate(
+      { currentPassword: values.currentPassword, newPassword: values.newPassword },
+      { onSuccess: () => { setSaved(true); resetPassword(); } },
+    );
   };
 
   return (
@@ -221,7 +223,21 @@ export function ProfileForm({
                     />
                     <Button variant="outlined" size="small" component="label">
                       Upload
-                      <input type="file" hidden accept="image/*" />
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file || !isOwnProfile) return;
+                          try {
+                            const uploaded = await uploadMutation.mutateAsync(file);
+                            profileMutation.mutate({ avatarUrl: uploaded.data.url });
+                          } finally {
+                            event.target.value = "";
+                          }
+                        }}
+                      />
                     </Button>
                   </Box>
                 </Stack>

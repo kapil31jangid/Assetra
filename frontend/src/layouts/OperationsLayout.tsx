@@ -28,6 +28,7 @@ import { ROUTES } from "../constants/routes";
 import { useLogoutMutation, useSessionQuery } from "../services/queries";
 
 const navItems = [
+  { label: "Dashboard", path: ROUTES.dashboard },
   { label: "Orders", path: ROUTES.orders },
   { label: "Schedule", path: ROUTES.schedule },
   { label: "Products", path: ROUTES.products },

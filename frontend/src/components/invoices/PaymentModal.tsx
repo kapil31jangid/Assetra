@@ -41,8 +41,9 @@ export function PaymentModal({ open, onClose, onSubmit, maxAmount }: PaymentModa
             fullWidth
             label="Payment Amount"
             type="number"
+            inputProps={{ min: 0, step: 0.01 }}
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
             error={isOverpaid}
             helperText={isOverpaid ? "Amount exceeds invoice total. This is not allowed." : `Max allowed: ${formatMoney({ amount: maxAmount, currency: "USD" })}`}
           />

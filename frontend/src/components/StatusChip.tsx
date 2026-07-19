@@ -13,6 +13,7 @@ const statusColor: Record<
   draft: "default",
   quotation: "primary",
   quotation_sent: "primary",
+  sale_order: "primary",
   confirmed: "secondary",
   invoiced: "secondary",
   reserved: "success",

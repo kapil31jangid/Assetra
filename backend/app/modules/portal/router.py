@@ -149,6 +149,8 @@ async def checkout_complete(
         period = req_line.rentalPeriod
         rental_qty = int(period.get("quantity", 1))
         rental_unit = period.get("unit", "daily")
+        starts_at = parse_dt(period["startsAt"])
+        ends_at = parse_dt(period["endsAt"])
 
         # ── Overlap-aware stock validation ──
         if product.product_type == "goods":

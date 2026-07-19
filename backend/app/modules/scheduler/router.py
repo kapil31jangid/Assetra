@@ -11,7 +11,7 @@ No new schema is required — this queries existing RentalOrderLine start/end da
 """
 
 from calendar import monthrange
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -42,6 +42,8 @@ async def get_schedule(
 
     month_start = date(y, m, 1)
     month_end = date(y, m, days_in_month)
+    month_start_dt = datetime.combine(month_start, time.min, tzinfo=UTC)
+    month_end_dt = datetime.combine(month_end, time.max, tzinfo=UTC)
 
     # Fetch all order lines whose rental window overlaps this month
     query = (
@@ -49,8 +51,8 @@ async def get_schedule(
         .join(RentalOrderLine.order)
         .where(
             # Overlapping interval: line starts before month end AND ends after month start
-            RentalOrderLine.rental_starts_at <= month_end.isoformat(),
-            RentalOrderLine.rental_ends_at >= month_start.isoformat(),
+            RentalOrderLine.rental_starts_at <= month_end_dt,
+            RentalOrderLine.rental_ends_at >= month_start_dt,
             # Exclude terminal statuses from calendar
             RentalOrder.status.notin_({"cancelled"}),
         )
