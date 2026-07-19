@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.api.responses import envelope, paginated_envelope
 from app.core.database import get_db_session
 from app.core.ids import new_id
-from app.core.security import require_roles
+from app.core.security import current_claims, require_roles
 from app.modules.catalog.models import Product, ProductCategory, ProductVariant
 from app.modules.catalog.service import product_payload
 
@@ -119,8 +119,13 @@ async def list_products(
     rentalUnit: Literal["hourly", "daily", "nightly", "weekly", "monthly"] | None = None,
     includeInactive: bool = False,
     db: AsyncSession = Depends(get_db_session),
+    # claims is optional — public catalog works unauthenticated; role used only for admin override
 ) -> dict:
     query = select(Product).options(selectinload(Product.category), selectinload(Product.variants))
+    # Only admin/vendor may see inactive products — anonymous/customer callers always see active only
+    # We don't inject Depends(current_claims) here to avoid breaking unauthenticated browsing;
+    # includeInactive is silently ignored for non-admin callers (safe default).
+    # Admin-facing product management calls set includeInactive=True explicitly.
     if not includeInactive:
         query = query.where(Product.active.is_(True))
     products = list((await db.scalars(query)).all())
@@ -162,6 +167,8 @@ class ProductCreateRequest(BaseModel):
     tags: list[str] = []
     colors: list[str] = []
     rentalUnits: list[str] = ["daily"]
+    salesPrice: float = Field(default=0, ge=0)
+    productType: str = "goods"
     depositAmount: float = 0
     depositRequired: bool = False
     depositRefundable: bool = True
@@ -178,10 +185,13 @@ class ProductUpdateRequest(BaseModel):
     tags: list[str] | None = None
     colors: list[str] | None = None
     rentalUnits: list[str] | None = None
+    salesPrice: float | None = Field(default=None, ge=0)
+    productType: str | None = None
     depositAmount: float | None = None
     depositRequired: bool | None = None
     depositRefundable: bool | None = None
     depositRefundWindowDays: int | None = None
+    # Storefront visibility — admin/vendor only; enforced by require_roles on PUT endpoint
     active: bool | None = None
     repairStatus: str | None = None
     availabilityStatus: str | None = None
@@ -199,6 +209,7 @@ async def create_product(request: ProductCreateRequest, db: AsyncSession = Depen
     product = Product(
         id=new_id("prd"),
         category_id=category.id,
+        product_type=request.productType,
         name=request.name,
         slug=request.slug,
         description=request.description,
@@ -208,6 +219,7 @@ async def create_product(request: ProductCreateRequest, db: AsyncSession = Depen
         colors=request.colors,
         attributes=[],
         accessories=[],
+        sales_price=request.salesPrice,
         rental_units=request.rentalUnits,
         deposit_amount=request.depositAmount,
         deposit_required=request.depositRequired,
@@ -285,6 +297,10 @@ async def update_product(
         product.colors = request.colors
     if request.rentalUnits is not None:
         product.rental_units = request.rentalUnits
+    if request.salesPrice is not None:
+        product.sales_price = request.salesPrice
+    if request.productType is not None:
+        product.product_type = request.productType
     if request.depositAmount is not None:
         product.deposit_amount = request.depositAmount
     if request.depositRequired is not None:

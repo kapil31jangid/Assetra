@@ -35,6 +35,8 @@ def product_payload(product: Product) -> dict:
         "attributes": product.attributes,
         "variants": variants,
         "accessories": product.accessories,
+        "productType": product.product_type,
+        "salesPrice": float(product.sales_price),
         "depositPolicy": {"required": product.deposit_required, "amount": money(product.deposit_amount, product.deposit_currency), "refundable": product.deposit_refundable, "refundWindowDays": product.deposit_refund_window_days},
         "repairStatus": product.repair_status,
         "stock": stock,

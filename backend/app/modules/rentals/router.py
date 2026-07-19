@@ -11,8 +11,11 @@ from app.api.responses import envelope, paginated_envelope
 from app.core.database import get_db_session
 from app.core.ids import new_id
 from app.core.security import current_claims, require_roles
+from app.modules.catalog.availability import check_variant_availability
 from app.modules.catalog.models import Product, ProductVariant
 from app.modules.auth.models import User
+from app.modules.pricing.models import Pricelist
+from app.modules.pricing.service import resolve_price
 from app.modules.rentals.models import RentalOrder, RentalOrderLine
 from app.modules.rentals.service import order_payload, parse_dt
 from app.modules.rentals.status import RENTAL_ORDER_STATUS_TRANSITIONS
@@ -111,6 +114,13 @@ async def create_order(
     rental_total = 0.0
     deposit_total = 0.0
 
+    # Fetch active pricelists for price resolution (with their rules)
+    from datetime import date
+    pricelist_rows = list((await db.scalars(
+        select(Pricelist).options(selectinload(Pricelist.rules)).where(Pricelist.active.is_(True))
+    )).all())
+    today = date.today()
+
     for request_line in request.lines:
         product = await db.get(Product, request_line.productId)
         if product is None or not product.active:
@@ -125,10 +135,38 @@ async def create_order(
 
         period = request_line.rentalPeriod
         rental_qty = int(period.get("quantity", 1))
+        rental_unit = period.get("unit", "daily")
+        starts_at = parse_dt(period["startsAt"])
+        ends_at = parse_dt(period["endsAt"])
 
-        # TODO: resolve unit_price via Pricelist price-resolution function
-        # For now fall back to 0 — the checkout completion endpoint does proper price resolution.
-        unit_price = 0.0
+        # ── Overlap-aware stock validation (accounts for in-flight bookings) ──
+        if product.product_type == "goods":
+            available, booked = await check_variant_availability(
+                db=db,
+                variant_id=variant.id,
+                requested_qty=request_line.quantity,
+                starts_at=starts_at,
+                ends_at=ends_at,
+            )
+            if not available:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Insufficient availability for '{product.name}' during the requested period. "
+                        f"Already booked: {booked}, requested: {request_line.quantity}."
+                    ),
+                )
+
+        # Resolve price via pricelist cascade (5-level tie-break)
+        unit_price = resolve_price(
+            pricelists=pricelist_rows,
+            product_id=product.id,
+            variant_id=variant.id,
+            rental_unit=rental_unit,
+            quantity=request_line.quantity,
+            rental_date=today,
+            sales_price=float(product.sales_price),
+        )
         line_total = unit_price * request_line.quantity * rental_qty
         rental_total += line_total
         deposit_total += float(product.deposit_amount) * request_line.quantity
@@ -142,9 +180,9 @@ async def create_order(
                 variant_name=variant.name,
                 sku=variant.sku,
                 quantity=request_line.quantity,
-                rental_starts_at=parse_dt(period["startsAt"]),
-                rental_ends_at=parse_dt(period["endsAt"]),
-                rental_unit=period.get("unit", "daily"),
+                rental_starts_at=starts_at,
+                rental_ends_at=ends_at,
+                rental_unit=rental_unit,
                 rental_quantity=rental_qty,
                 rental_timezone=period.get("timezone", "Asia/Kolkata"),
                 unit_price_amount=unit_price,

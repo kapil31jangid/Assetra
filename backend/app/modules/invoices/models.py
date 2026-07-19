@@ -12,7 +12,11 @@ class Invoice(StringIdMixin, TimestampMixin, Base):
     number: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
     order_id: Mapped[str | None] = mapped_column(ForeignKey("rental_orders.id"))
     customer_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Lifecycle: draft → posted
     status: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
+    # Payment tracking: unpaid | partially_paid | paid
+    payment_status: Mapped[str] = mapped_column(String(32), default="unpaid", nullable=False)
+    amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     subtotal_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     subtotal_currency: Mapped[str] = mapped_column(String(3), default="INR", nullable=False)
     tax_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
